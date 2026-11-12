@@ -1,0 +1,121 @@
+services:
+  mongo:
+    image: mongodb/mongodb-atlas-local:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --eval 'db.runCommand({ ping: 1 }).ok' | grep 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  agent:
+    build:
+      context: ../services/agent
+      dockerfile: Dockerfile
+    env_file:
+      - ../.env
+    expose:
+      - "8000"
+    volumes:
+      - ../services/agent:/app
+      - /app/.venv
+      - repos_data:/data/repos
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8000/internal/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  api:
+    image: codescout-api:dev
+    build:
+      context: ../services/api
+      dockerfile: Dockerfile
+    env_file:
+      - ../.env
+    ports:
+      - "4000:4000"
+    environment:
+      PORT: "4000"
+    volumes:
+      - ../services/api:/app
+      - /app/node_modules
+      - repos_data:/data/repos
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      agent:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:4000/api/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  worker:
+    image: codescout-api:dev
+    build:
+      context: ../services/api
+      dockerfile: Dockerfile
+    command: ["pnpm", "worker:dev"]
+    env_file:
+      - ../.env
+    volumes:
+      - ../services/api:/app
+      - /app/node_modules
+      - repos_data:/data/repos
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      agent:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ../apps/web
+      dockerfile: Dockerfile
+    env_file:
+      - ../.env
+    ports:
+      - "3000:3000"
+    environment:
+      INTERNAL_API_URL: http://api:4000
+      WATCHPACK_POLLING: "true"
+      CHOKIDAR_USEPOLLING: "true"
+    volumes:
+      - ../apps/web:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  repos_data:
+  mongo_data:
+
