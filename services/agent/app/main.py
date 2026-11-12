@@ -1,16 +1,29 @@
 import hmac
 from datetime import UTC, datetime
 
-from fastapi import FastAPI, Header, HTTPException, status
+from bson import ObjectId
+from fastapi import Depends, FastAPI, Header, HTTPException, status
 from pydantic import BaseModel
 
 from app.config import get_settings
+from app.db.mongo import get_db
 
 
 class HealthResponse(BaseModel):
     status: str
     service: str
     timestamp: str
+
+
+class IndexRequest(BaseModel):
+    repoId: str
+    cloneUrl: str
+    token: str | None = None
+
+
+class IndexResponse(BaseModel):
+    status: str
+    repoId: str
 
 
 def verify_internal_key(x_internal_key: str | None = Header(default=None)) -> None:
@@ -33,3 +46,27 @@ async def health() -> HealthResponse:
         timestamp=datetime.now(UTC).isoformat(),
     )
 
+
+@app.post(
+    "/internal/index",
+    response_model=IndexResponse,
+    dependencies=[Depends(verify_internal_key)],
+)
+async def index_repo(payload: IndexRequest) -> IndexResponse:
+    db = get_db()
+    try:
+        oid = ObjectId(payload.repoId)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="Invalid repoId") from exc
+
+    db["repos"].update_one(
+        {"_id": oid},
+        {
+            "$set": {
+                "status": "cloning",
+                "progress": {"stage": "cloning", "processedFiles": 0, "totalFiles": 0},
+                "error": "",
+            }
+        },
+    )
+    return IndexResponse(status="cloning", repoId=payload.repoId)
