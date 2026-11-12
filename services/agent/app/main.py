@@ -1,3 +1,4 @@
+import asyncio
 import hmac
 import time
 from collections.abc import AsyncIterator
@@ -14,6 +15,7 @@ from app.config import get_settings
 from app.indexing import index_repository
 from app.llm import ChatStreamChunk, get_llm_client
 from app.retrieval import vector_search
+from app.tracing import start_question_trace
 
 
 class HealthResponse(BaseModel):
@@ -101,10 +103,52 @@ async def index_repo(payload: IndexRequest) -> IndexResponse:
 async def ask_repo(payload: AskRequest) -> StreamingResponse:
     async def event_stream() -> AsyncIterator[str]:
         started = time.perf_counter()
+        settings = get_settings()
+        trace = start_question_trace(
+            run_id=payload.runId,
+            repo_id=payload.repoId,
+            question=payload.question,
+        )
         yield format_sse("run_started", {"runId": payload.runId})
 
+        accumulated = ""
+        emitted_citation_objs: list[dict[str, Any]] = []
+        tokens_in = 0
+        tokens_out = 0
+        error_message: str | None = None
+
         try:
-            chunks = await vector_search(repo_id=payload.repoId, query=payload.question, top_k=8)
+            ret_started = time.perf_counter()
+            ret_span = trace.start_retrieval(query=payload.question, top_k=8)
+            try:
+                chunks = await vector_search(
+                    repo_id=payload.repoId,
+                    query=payload.question,
+                    top_k=8,
+                )
+            except Exception as ret_exc:
+                trace.end_retrieval(
+                    ret_span,
+                    chunks=[],
+                    latency_ms=(time.perf_counter() - ret_started) * 1000.0,
+                    error=str(ret_exc),
+                )
+                raise
+
+            trace.end_retrieval(
+                ret_span,
+                chunks=[
+                    {
+                        "filePath": c.file_path,
+                        "startLine": c.start_line,
+                        "endLine": c.end_line,
+                        "score": round(c.score, 4),
+                    }
+                    for c in chunks
+                ],
+                latency_ms=(time.perf_counter() - ret_started) * 1000.0,
+            )
+
             history = [{"role": m.role, "content": m.content} for m in payload.conversationHistory]
             messages = build_qa_messages(
                 question=payload.question,
@@ -112,36 +156,60 @@ async def ask_repo(payload: AskRequest) -> StreamingResponse:
                 conversation_history=history,
             )
 
-            llm = get_llm_client()
-            stream = await llm.chat(messages=messages, stream=True)
+            llm_started = time.perf_counter()
+            gen_span = trace.start_generation(
+                model=settings.llm_chat_model,
+                message_count=len(messages),
+            )
 
-            accumulated = ""
-            emitted_citations: set[tuple[str, int, int]] = set()
-            tokens_in = 0
-            tokens_out = 0
+            try:
+                llm = get_llm_client()
+                stream = await llm.chat(messages=messages, stream=True)
 
-            assert isinstance(stream, AsyncIterator)
-            async for chunk in stream:
-                assert isinstance(chunk, ChatStreamChunk)
-                if chunk.delta:
-                    accumulated += chunk.delta
-                    yield format_sse("token", {"text": chunk.delta})
+                emitted_citations: set[tuple[str, int, int]] = set()
+                assert isinstance(stream, AsyncIterator)
+                async for chunk in stream:
+                    assert isinstance(chunk, ChatStreamChunk)
+                    if chunk.delta:
+                        accumulated += chunk.delta
+                        yield format_sse("token", {"text": chunk.delta})
 
-                    for cit in extract_citations(accumulated):
-                        key = (cit.filePath, cit.startLine, cit.endLine)
-                        if key not in emitted_citations:
-                            emitted_citations.add(key)
-                            yield format_sse("citation", cit.model_dump())
+                        for cit in extract_citations(accumulated):
+                            key = (cit.filePath, cit.startLine, cit.endLine)
+                            if key not in emitted_citations:
+                                emitted_citations.add(key)
+                                cit_dict = cit.model_dump()
+                                emitted_citation_objs.append(cit_dict)
+                                yield format_sse("citation", cit_dict)
 
-                if chunk.usage is not None:
-                    tokens_in = chunk.usage.tokens_in
-                    tokens_out = chunk.usage.tokens_out
+                    if chunk.usage is not None:
+                        tokens_in = chunk.usage.tokens_in
+                        tokens_out = chunk.usage.tokens_out
+            except Exception as llm_exc:
+                trace.end_generation(
+                    gen_span,
+                    output_text=accumulated,
+                    tokens_in=tokens_in,
+                    tokens_out=tokens_out,
+                    latency_ms=(time.perf_counter() - llm_started) * 1000.0,
+                    error=str(llm_exc),
+                )
+                raise
+
+            trace.end_generation(
+                gen_span,
+                output_text=accumulated,
+                tokens_in=tokens_in,
+                tokens_out=tokens_out,
+                latency_ms=(time.perf_counter() - llm_started) * 1000.0,
+            )
 
             duration_ms = round((time.perf_counter() - started) * 1000.0, 2)
             yield format_sse(
                 "run_completed",
                 {
                     "runId": payload.runId,
+                    "langfuseTraceId": trace.trace_id,
                     "totals": {
                         "tokensIn": tokens_in,
                         "tokensOut": tokens_out,
@@ -151,12 +219,22 @@ async def ask_repo(payload: AskRequest) -> StreamingResponse:
                 },
             )
         except Exception as exc:
+            error_message = str(exc)
             yield format_sse(
                 "error",
                 {
-                    "message": str(exc),
+                    "message": error_message,
                     "retryable": False,
                 },
+            )
+        finally:
+            await asyncio.to_thread(
+                trace.finish,
+                output_text=accumulated,
+                citations=emitted_citation_objs,
+                tokens_in=tokens_in,
+                tokens_out=tokens_out,
+                error=error_message,
             )
 
     return StreamingResponse(
