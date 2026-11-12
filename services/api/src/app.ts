@@ -4,6 +4,7 @@ import express, { type Express, type Request, type Response } from "express";
 import helmet from "helmet";
 import { getConfig } from "./lib/config.js";
 import { createAuthRouter } from "./routes/auth.js";
+import { createConversationsRouter } from "./routes/conversations.js";
 import { createReposRouter } from "./routes/repos.js";
 
 export function createApp(): Express {
@@ -30,6 +31,7 @@ export function createApp(): Express {
 
   app.use("/api", createAuthRouter());
   app.use("/api", createReposRouter());
+  app.use("/api", createConversationsRouter());
 
   return app;
 }
