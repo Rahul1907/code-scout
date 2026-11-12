@@ -1,9 +1,12 @@
+import Link from "next/link";
+import { AuthHeaderAction } from "@/components/AuthHeaderAction";
+
 export default function LandingPage() {
   return (
     <div className="flex min-h-screen flex-col">
       <header className="border-b border-[var(--border)] bg-[var(--surface)]">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-          <a href="/" className="flex items-center gap-2 text-lg font-semibold tracking-tight">
+          <Link href="/" className="flex items-center gap-2 text-lg font-semibold tracking-tight">
             <svg
               aria-hidden="true"
               className="h-6 w-6 text-[var(--accent)]"
@@ -19,7 +22,7 @@ export default function LandingPage() {
               />
             </svg>
             <span>CodeScout</span>
-          </a>
+          </Link>
           <nav aria-label="Primary">
             <ul className="flex items-center gap-4">
               <li>
@@ -31,12 +34,7 @@ export default function LandingPage() {
                 </a>
               </li>
               <li>
-                <a
-                  href="/api/auth/github"
-                  className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white dark:text-slate-950"
-                >
-                  Sign in with GitHub
-                </a>
+                <AuthHeaderAction variant="nav" />
               </li>
             </ul>
           </nav>
@@ -57,12 +55,7 @@ export default function LandingPage() {
             request.
           </p>
           <div className="flex flex-wrap items-center gap-4 pt-2">
-            <a
-              href="/api/auth/github"
-              className="inline-flex items-center gap-2 rounded-lg bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-white dark:text-slate-950"
-            >
-              Sign in with GitHub
-            </a>
+            <AuthHeaderAction variant="hero" />
           </div>
         </div>
 
@@ -101,4 +94,3 @@ export default function LandingPage() {
     </div>
   );
 }
-
