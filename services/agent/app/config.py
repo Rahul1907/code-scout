@@ -17,8 +17,9 @@ class Settings(BaseSettings):
     llm_chat_model: str = ""
     llm_fast_model: str = ""
     embedding_model: str = ""
-    embedding_dimensions: int = 1024
+    embedding_dimensions: int = 2048
     rerank_model: str = ""
+    rerank_base_url: str = ""
     llm_rpm_limit: int = 35
     llm_max_retries: int = 5
 
@@ -34,4 +35,3 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
-
