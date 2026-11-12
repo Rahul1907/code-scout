@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     langfuse_host: str = "https://cloud.langfuse.com"
 
     max_files_per_repo: int = 3000
+    embedding_batch_size: int = 32
     max_agent_steps: int = 15
     repos_dir: str = "/data/repos"
 

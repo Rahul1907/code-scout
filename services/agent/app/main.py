@@ -1,12 +1,13 @@
 import hmac
 from datetime import UTC, datetime
+from typing import Any
 
 from bson import ObjectId
 from fastapi import Depends, FastAPI, Header, HTTPException, status
 from pydantic import BaseModel
 
 from app.config import get_settings
-from app.db.mongo import get_db
+from app.indexing import index_repository
 
 
 class HealthResponse(BaseModel):
@@ -24,6 +25,8 @@ class IndexRequest(BaseModel):
 class IndexResponse(BaseModel):
     status: str
     repoId: str
+    commitSha: str = ""
+    stats: dict[str, Any] = {}
 
 
 def verify_internal_key(x_internal_key: str | None = Header(default=None)) -> None:
@@ -53,20 +56,21 @@ async def health() -> HealthResponse:
     dependencies=[Depends(verify_internal_key)],
 )
 async def index_repo(payload: IndexRequest) -> IndexResponse:
-    db = get_db()
-    try:
-        oid = ObjectId(payload.repoId)
-    except Exception as exc:
-        raise HTTPException(status_code=400, detail="Invalid repoId") from exc
+    if not ObjectId.is_valid(payload.repoId):
+        raise HTTPException(status_code=400, detail="Invalid repoId")
 
-    db["repos"].update_one(
-        {"_id": oid},
-        {
-            "$set": {
-                "status": "cloning",
-                "progress": {"stage": "cloning", "processedFiles": 0, "totalFiles": 0},
-                "error": "",
-            }
-        },
+    try:
+        result = await index_repository(
+            repo_id=payload.repoId,
+            clone_url=payload.cloneUrl,
+            token=payload.token,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    return IndexResponse(
+        status=str(result["status"]),
+        repoId=payload.repoId,
+        commitSha=str(result.get("commitSha", "")),
+        stats=dict(result.get("stats", {})),
     )
-    return IndexResponse(status="cloning", repoId=payload.repoId)

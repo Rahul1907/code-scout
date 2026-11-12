@@ -45,6 +45,7 @@ async function startWorker(): Promise<void> {
           cloneUrl,
           token,
         }),
+        signal: AbortSignal.timeout(15 * 60 * 1000),
       });
 
       if (!res.ok) {
