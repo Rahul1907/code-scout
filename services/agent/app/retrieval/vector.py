@@ -1,23 +1,9 @@
 import asyncio
 from typing import Any
 
-from pydantic import BaseModel
-
 from app.db.mongo import get_db
 from app.llm import get_llm_client
-
-
-class RetrievedChunk(BaseModel):
-    chunk_id: str
-    repo_id: str
-    file_path: str
-    language: str
-    symbol_name: str
-    symbol_type: str
-    start_line: int
-    end_line: int
-    content: str
-    score: float = 0.0
+from app.retrieval.types import RetrievedChunk
 
 
 async def vector_search(
