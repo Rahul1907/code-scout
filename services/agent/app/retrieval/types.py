@@ -12,3 +12,4 @@ class RetrievedChunk(BaseModel):
     end_line: int
     content: str
     score: float = 0.0
+    source: str = "unknown"

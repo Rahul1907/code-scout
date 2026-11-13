@@ -305,6 +305,7 @@ async def map_hits_to_chunks(
                 end_line=int(doc["endLine"]),
                 content=str(doc["content"]),
                 score=round(score, 4),
+                source="keyword",
             )
         )
     return results

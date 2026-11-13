@@ -60,6 +60,7 @@ async def vector_search(
                 end_line=int(doc["endLine"]),
                 content=str(doc["content"]),
                 score=float(doc.get("score", 0.0)),
+                source="vector",
             )
         )
     return results
