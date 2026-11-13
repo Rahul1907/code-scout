@@ -14,7 +14,7 @@ from app.agent import build_qa_messages, extract_citations, format_sse
 from app.config import get_settings
 from app.indexing import index_repository
 from app.llm import ChatStreamChunk, get_llm_client
-from app.retrieval import vector_search
+from app.retrieval import RetrievalConfig, retrieve_chunks
 from app.tracing import start_question_trace
 
 
@@ -47,6 +47,7 @@ class AskRequest(BaseModel):
     repoId: str
     conversationHistory: list[HistoryMessage] = Field(default_factory=list)
     question: str
+    retrievalConfig: RetrievalConfig | None = None
 
 
 def verify_internal_key(x_internal_key: str | None = Header(default=None)) -> None:
@@ -118,13 +119,17 @@ async def ask_repo(payload: AskRequest) -> StreamingResponse:
         error_message: str | None = None
 
         try:
+            retrieval_cfg = payload.retrievalConfig or RetrievalConfig()
             ret_started = time.perf_counter()
-            ret_span = trace.start_retrieval(query=payload.question, top_k=8)
+            ret_span = trace.start_retrieval(
+                query=payload.question,
+                top_k=retrieval_cfg.rerank_top_k,
+            )
             try:
-                chunks = await vector_search(
+                chunks = await retrieve_chunks(
                     repo_id=payload.repoId,
                     query=payload.question,
-                    top_k=8,
+                    config=retrieval_cfg,
                 )
             except Exception as ret_exc:
                 trace.end_retrieval(
@@ -143,6 +148,7 @@ async def ask_repo(payload: AskRequest) -> StreamingResponse:
                         "startLine": c.start_line,
                         "endLine": c.end_line,
                         "score": round(c.score, 4),
+                        "source": c.source,
                     }
                     for c in chunks
                 ],

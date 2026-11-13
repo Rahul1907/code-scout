@@ -75,7 +75,7 @@ def test_internal_ask_streams_sse_events() -> None:
     ]
 
     with (
-        patch("app.main.vector_search", AsyncMock(return_value=fake_chunks)),
+        patch("app.main.retrieve_chunks", AsyncMock(return_value=fake_chunks)),
         patch("app.main.get_llm_client", return_value=mock_llm),
     ):
         client = TestClient(app)
