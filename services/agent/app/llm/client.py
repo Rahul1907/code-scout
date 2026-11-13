@@ -86,9 +86,8 @@ def _compute_backoff_seconds(
 def _derive_rerank_url(model: str, configured_url: str) -> str:
     if configured_url:
         return configured_url
-    # NVIDIA NIM rerank models use ai.api.nvidia.com/v1/retrieval/{org}/{slug}/reranking
-    slug = model.replace(".", "-")
-    return f"https://ai.api.nvidia.com/v1/retrieval/{slug}/reranking"
+    # NVIDIA NIM rerank models use ai.api.nvidia.com/v1/retrieval/{model}/reranking
+    return f"https://ai.api.nvidia.com/v1/retrieval/{model}/reranking"
 
 
 class LLMClient:
