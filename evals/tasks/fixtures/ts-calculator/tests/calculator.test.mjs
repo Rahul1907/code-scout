@@ -45,3 +45,4 @@ describe("Calculator", () => {
     assert.equal(mean([]), 0);
   });
 });
+

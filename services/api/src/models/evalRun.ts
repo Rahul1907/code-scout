@@ -33,3 +33,4 @@ const evalRunSchema = new Schema<IEvalRun>(
 evalRunSchema.index({ suite: 1, createdAt: -1 });
 
 export const EvalRun = mongoose.model<IEvalRun>("EvalRun", evalRunSchema);
+

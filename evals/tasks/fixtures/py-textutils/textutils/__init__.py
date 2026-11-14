@@ -13,3 +13,4 @@ __all__ = [
     "truncate",
     "word_count",
 ]
+

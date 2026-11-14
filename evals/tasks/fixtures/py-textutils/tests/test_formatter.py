@@ -37,3 +37,4 @@ def test_extract_mentions():
     assert extract_mentions("Hello @alice and @bob_99, how are you?") == ["alice", "bob_99"]
     assert extract_mentions("No mentions here.") == []
     assert extract_mentions("Contact support@example.com or @team") == ["team"]
+

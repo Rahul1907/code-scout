@@ -66,3 +66,4 @@ export type PullRequestDoc = PullRequestFields & { _id: mongoose.Types.ObjectId 
 export const PullRequest: Model<PullRequestFields> =
   (mongoose.models.PullRequest as Model<PullRequestFields> | undefined) ??
   mongoose.model<PullRequestFields>("PullRequest", pullRequestSchema);
+

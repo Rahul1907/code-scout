@@ -56,3 +56,4 @@ def test_export_json_includes_created_at():
     assert len(data) == 1
     assert "created_at" in data[0]
     assert isinstance(data[0]["created_at"], str)
+

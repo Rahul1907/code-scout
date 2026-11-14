@@ -35,3 +35,4 @@ export function mean(numbers) {
   // BUG: Returns NaN for empty array
   return numbers.reduce((acc, curr) => acc + curr, 0) / numbers.length;
 }
+

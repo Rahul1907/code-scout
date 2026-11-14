@@ -5,3 +5,4 @@ Run tests using:
 ```bash
 node --test tests/calculator.test.mjs
 ```
+

@@ -49,3 +49,4 @@ def extract_mentions(text: str) -> list[str]:
     TODO: Not implemented yet.
     """
     raise NotImplementedError("extract_mentions is not implemented")
+

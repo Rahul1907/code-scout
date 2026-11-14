@@ -5,3 +5,4 @@ Run tests using:
 ```bash
 pytest tests/test_formatter.py
 ```
+

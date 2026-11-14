@@ -95,3 +95,4 @@ async def test_commit_and_push_local(tmp_path):
         assert result["branch"] == "agent/run-789"
         assert result["commitSha"]
         assert result["pushed"] is False
+

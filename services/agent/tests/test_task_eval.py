@@ -107,3 +107,4 @@ def test_print_summary_table_smoke(capsys):
     assert "task-01" in captured.out
     assert "PASS" in captured.out
     assert "FAIL" in captured.out
+
