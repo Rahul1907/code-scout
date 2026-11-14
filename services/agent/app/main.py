@@ -10,8 +10,9 @@ from fastapi import Depends, FastAPI, Header, HTTPException, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from app.agent import build_qa_messages, extract_citations, format_sse
+from app.agent import build_qa_messages, extract_citations, format_sse, run_agent_loop
 from app.config import get_settings
+from app.db import get_db, get_redis_client
 from app.indexing import index_repository
 from app.llm import ChatStreamChunk, get_llm_client
 from app.retrieval import RetrievalConfig, retrieve_chunks
@@ -48,6 +49,16 @@ class AskRequest(BaseModel):
     conversationHistory: list[HistoryMessage] = Field(default_factory=list)
     question: str
     retrievalConfig: RetrievalConfig | None = None
+
+
+class RunRequest(BaseModel):
+    runId: str
+    repoId: str
+    conversationId: str | None = None
+    userId: str | None = None
+    conversationHistory: list[HistoryMessage] = Field(default_factory=list)
+    instruction: str
+    mode: str = "ask"
 
 
 def verify_internal_key(x_internal_key: str | None = Header(default=None)) -> None:
@@ -267,3 +278,51 @@ async def ask_repo(payload: AskRequest) -> StreamingResponse:
             "X-Accel-Buffering": "no",
         },
     )
+
+
+@app.post(
+    "/internal/run",
+    dependencies=[Depends(verify_internal_key)],
+)
+async def run_agent(payload: RunRequest) -> StreamingResponse:
+    if not ObjectId.is_valid(payload.repoId):
+        raise HTTPException(status_code=400, detail="Invalid repoId")
+
+    history = [{"role": m.role, "content": m.content} for m in payload.conversationHistory]
+    return StreamingResponse(
+        run_agent_loop(
+            run_id=payload.runId,
+            repo_id=payload.repoId,
+            instruction=payload.instruction,
+            conversation_id=payload.conversationId,
+            user_id=payload.userId,
+            conversation_history=history,
+            mode=payload.mode,
+        ),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+@app.post(
+    "/internal/runs/{run_id}/cancel",
+    dependencies=[Depends(verify_internal_key)],
+)
+async def cancel_run(run_id: str) -> dict[str, Any]:
+    redis_client = get_redis_client()
+    try:
+        await redis_client.set(f"run_cancelled:{run_id}", "1", ex=3600)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to cancel in Redis: {exc}") from exc
+
+    db = get_db()
+    await asyncio.to_thread(
+        db["agent_runs"].update_one,
+        {"runId": run_id},
+        {"$set": {"status": "cancelled", "completedAt": datetime.now(UTC)}},
+    )
+    return {"status": "cancelled", "runId": run_id}
