@@ -198,3 +198,41 @@ export type SseEvent =
       };
     }
   | { type: "error"; data: { message: string; retryable?: boolean } };
+
+export interface TaskEvalResultItem {
+  taskId: string;
+  repo: string;
+  instruction: string;
+  targetFile?: string;
+  testCommand: string;
+  passed: boolean;
+  exitCode: number;
+  testOutputTail?: string;
+  stepCount: number;
+  totalTokens: number;
+  durationSec: number;
+  editedFiles?: string[];
+  failureCategory?: string | null;
+  agentStatus?: string;
+}
+
+export interface EvalRunItem {
+  _id: string;
+  suite: "retrieval" | "task";
+  createdAt: string;
+  configSnapshot: Record<string, any>;
+  repos?: string[];
+  totalQuestions?: number;
+  totalTasks?: number;
+  passedTasks?: number;
+  failedTasks?: number;
+  metrics: {
+    passRate?: number;
+    avgSteps?: number;
+    avgTokens?: number;
+    avgDurationSec?: number;
+    failureCategories?: Record<string, number>;
+    [key: string]: any;
+  };
+  results?: Array<TaskEvalResultItem & Record<string, any>>;
+}

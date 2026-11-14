@@ -1,6 +1,7 @@
 import type {
   ChangesetItem,
   ConversationItem,
+  EvalRunItem,
   FileContentResponse,
   GitHubRepoItem,
   MessageItem,
@@ -292,4 +293,15 @@ export async function getRepoGitHubStatus(repoId: string): Promise<{
     installationId: number | null;
     installUrl: string;
   }>(`/api/repos/${repoId}/github`);
+}
+
+export async function listEvalRuns(suite?: "retrieval" | "task"): Promise<EvalRunItem[]> {
+  const url = suite ? `/api/evals?suite=${suite}` : "/api/evals";
+  const data = await apiFetch<{ evalRuns: EvalRunItem[] }>(url);
+  return data.evalRuns;
+}
+
+export async function getEvalRun(id: string): Promise<EvalRunItem> {
+  const data = await apiFetch<{ evalRun: EvalRunItem }>(`/api/evals/${id}`);
+  return data.evalRun;
 }
