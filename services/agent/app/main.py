@@ -1,5 +1,6 @@
 import asyncio
 import hmac
+import logging
 import time
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime
@@ -17,6 +18,8 @@ from app.indexing import index_repository
 from app.llm import ChatStreamChunk, get_llm_client
 from app.retrieval import RetrievalConfig, retrieve_chunks
 from app.tracing import start_question_trace
+
+logger = logging.getLogger(__name__)
 
 
 class HealthResponse(BaseModel):
@@ -326,3 +329,29 @@ async def cancel_run(run_id: str) -> dict[str, Any]:
         {"$set": {"status": "cancelled", "completedAt": datetime.now(UTC)}},
     )
     return {"status": "cancelled", "runId": run_id}
+
+
+class DiscardRunRequest(BaseModel):
+    repoId: str
+
+
+@app.post(
+    "/internal/runs/{run_id}/discard",
+    dependencies=[Depends(verify_internal_key)],
+)
+async def discard_run(run_id: str, payload: DiscardRunRequest) -> dict[str, Any]:
+    from app.sandbox import SandboxManager
+
+    sandbox_mgr = SandboxManager()
+    try:
+        await sandbox_mgr.cleanup_run(repo_id=payload.repoId, run_id=run_id, keep_branch=False)
+    except Exception as exc:
+        logger.warning("Error discarding worktree for run %s: %s", run_id, exc)
+
+    db = get_db()
+    await asyncio.to_thread(
+        db["agent_runs"].update_one,
+        {"runId": run_id},
+        {"$set": {"status": "cancelled", "completedAt": datetime.now(UTC)}},
+    )
+    return {"status": "discarded", "runId": run_id}

@@ -10,14 +10,16 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from app.agent.changeset import create_changeset
 from app.agent.cost import estimate_cost
 from app.agent.events import extract_citations, format_sse
-from app.agent.prompts import AGENT_SYSTEM_PROMPT
+from app.agent.prompts import AGENT_EDIT_SYSTEM_PROMPT, AGENT_SYSTEM_PROMPT
 from app.agent.summarizer import compact_conversation_history
-from app.agent.tools import READ_ONLY_TOOLS, execute_tool
+from app.agent.tools import ALL_TOOLS, READ_ONLY_TOOLS, execute_tool
 from app.config import get_settings
 from app.db import get_db, get_redis_client
 from app.llm import ToolCall, get_llm_client
+from app.sandbox import SandboxManager
 from app.tracing import start_agent_trace
 
 logger = logging.getLogger(__name__)
@@ -57,10 +59,24 @@ async def run_agent_loop(
     """Execute the multi-step ReAct agent loop with read-only tools and SSE streaming."""
     started = time.perf_counter()
     settings = get_settings()
-    repo_dir = Path(settings.repos_dir) / repo_id / "base"
     db = get_db()
     redis_client = get_redis_client()
     llm = get_llm_client()
+
+    sandbox_mgr: SandboxManager | None = None
+    if mode == "edit":
+        sandbox_mgr = SandboxManager()
+        worktree_path_str = await sandbox_mgr.create_worktree(repo_id, run_id)
+        repo_dir = Path(worktree_path_str)
+        try:
+            await sandbox_mgr.ensure_sandbox(repo_id, run_id)
+        except Exception as sb_err:
+            logger.warning("Could not pre-start sandbox container: %s", sb_err)
+    else:
+        repo_dir = Path(settings.repos_dir) / repo_id / "base"
+
+    active_tools = ALL_TOOLS if mode == "edit" else READ_ONLY_TOOLS
+    system_prompt = AGENT_EDIT_SYSTEM_PROMPT if mode == "edit" else AGENT_SYSTEM_PROMPT
 
     trace = start_agent_trace(
         run_id=run_id,
@@ -99,7 +115,7 @@ async def run_agent_loop(
     )
 
     messages: list[dict[str, Any]] = [
-        {"role": "system", "content": AGENT_SYSTEM_PROMPT},
+        {"role": "system", "content": system_prompt},
     ]
     if summary:
         messages.append(
@@ -126,6 +142,7 @@ async def run_agent_loop(
     status = "running"
     error_message: str | None = None
     emitted_citations: set[tuple[str, int, int]] = set()
+    last_test_step: dict[str, Any] | None = None
 
     max_steps = max_steps_override or settings.max_agent_steps
     token_budget = DEFAULT_TOKEN_BUDGET
@@ -153,7 +170,7 @@ async def run_agent_loop(
 
             yield format_sse("step_started", {"index": step_index, "type": "thought"})
 
-            # 3. Call LLM with read-only tools
+            # 3. Call LLM with active tools
             step_span = trace.start_step_span(
                 step_index=step_index,
                 step_type="thought",
@@ -165,18 +182,20 @@ async def run_agent_loop(
             try:
                 resp = await llm.chat(
                     messages=messages,
-                    tools=READ_ONLY_TOOLS,
+                    tools=active_tools,
                     temperature=0.2,
                 )
                 total_llm_calls += 1
                 total_tokens_in += resp.usage.tokens_in
                 total_tokens_out += resp.usage.tokens_out
             except Exception as llm_exc:
-                logger.warning("LLM call failed at step %d: %s; retrying once", step_index, llm_exc)
+                logger.warning(
+                    "LLM call failed at step %d: %s; retrying once", step_index, llm_exc
+                )
                 try:
                     resp = await llm.chat(
                         messages=messages,
-                        tools=READ_ONLY_TOOLS,
+                        tools=active_tools,
                         temperature=0.2,
                     )
                     total_llm_calls += 1
@@ -294,8 +313,19 @@ async def run_agent_loop(
                     arguments=tc.arguments,
                     repo_id=repo_id,
                     repo_dir=repo_dir,
+                    run_id=run_id,
+                    sandbox_manager=sandbox_mgr,
                 )
                 tool_duration_ms = (time.perf_counter() - tool_start) * 1000.0
+
+                if tc.name == "run_command":
+                    last_test_step = {
+                        "inputSummary": json.dumps(parsed_args)[:120],
+                        "toolOutput": tool_output,
+                        "exitCode": 0 if "Exit code: 0" in tool_output else 1,
+                        "stdoutTail": tool_output[:500],
+                        "stderrTail": "",
+                    }
 
                 # Truncate large tool output
                 if len(tool_output) > MAX_TOOL_OUTPUT_CHARS:
@@ -386,6 +416,21 @@ async def run_agent_loop(
             )
             status = "completed"
 
+        # In edit mode, create changeset if file changes exist
+        if status == "completed" and mode == "edit":
+            try:
+                changeset_doc = await create_changeset(
+                    repo_id=repo_id,
+                    run_id=run_id,
+                    worktree_dir=repo_dir,
+                    last_test_step=last_test_step,
+                )
+                if changeset_doc:
+                    status = "awaiting_approval"
+                    yield format_sse("changeset_ready", {"changesetId": changeset_doc["_id"]})
+            except Exception as cs_err:
+                logger.warning("Error creating changeset for run %s: %s", run_id, cs_err)
+
     except Exception as exc:
         status = "failed"
         error_message = str(exc)
@@ -393,6 +438,12 @@ async def run_agent_loop(
         yield format_sse("error", {"message": error_message, "retryable": False})
 
     finally:
+        if sandbox_mgr:
+            try:
+                await sandbox_mgr.stop_sandbox(run_id)
+            except Exception as s_exc:
+                logger.debug("Error stopping sandbox container: %s", s_exc)
+
         total_duration_ms = round((time.perf_counter() - started) * 1000.0, 2)
         model_name = settings.llm_chat_model
         estimated_cost = estimate_cost(model_name, total_tokens_in, total_tokens_out)

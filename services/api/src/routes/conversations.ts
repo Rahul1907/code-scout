@@ -186,6 +186,7 @@ export function createConversationsRouter(): Router {
     const retrievedChunks: RetrievedChunkPayload[] = [];
     const steps: StepPayload[] = [];
     let runSummary: RunSummaryPayload | undefined = undefined;
+    let changesetId: string | undefined = undefined;
 
     const parseSseBlock = (block: string): void => {
       let eventType = "";
@@ -200,7 +201,9 @@ export function createConversationsRouter(): Router {
       if (!eventType || dataLines.length === 0) return;
       try {
         const data = JSON.parse(dataLines.join("\n")) as Record<string, unknown>;
-        if (eventType === "token" && typeof data.text === "string") {
+        if (eventType === "changeset_ready" && typeof data.changesetId === "string") {
+          changesetId = data.changesetId;
+        } else if (eventType === "token" && typeof data.text === "string") {
           assistantText += data.text;
         } else if (
           eventType === "citation" &&
@@ -344,6 +347,7 @@ export function createConversationsRouter(): Router {
           steps,
           runSummary,
           runId,
+          changesetId,
         });
       }
     } catch (err) {

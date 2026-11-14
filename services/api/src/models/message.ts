@@ -65,6 +65,7 @@ const messageSchema = new Schema(
     steps: { type: [stepSchema], default: [] },
     runSummary: { type: runSummarySchema, default: undefined },
     runId: { type: String, default: undefined },
+    changesetId: { type: String, default: undefined },
   },
   { timestamps: true },
 );
