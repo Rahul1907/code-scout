@@ -10,10 +10,12 @@ export function createChangesetsRouter(): Router {
 
   // GET /api/runs/:id/changeset
   router.get("/runs/:id/changeset", async (req: Request, res: Response) => {
-    const runId = String(req.params.id ?? "");
+    const id = String(req.params.id ?? "");
 
     try {
-      const changeset = await Changeset.findOne({ runId }).lean();
+      const changeset = await Changeset.findOne({
+        $or: [{ runId: id }, { _id: id }],
+      }).lean();
       if (!changeset) {
         res.status(404).json({ error: "Changeset not found for this run" });
         return;
@@ -29,10 +31,12 @@ export function createChangesetsRouter(): Router {
 
   // POST /api/changesets/:id/approve
   router.post("/changesets/:id/approve", async (req: Request, res: Response) => {
-    const changesetId = String(req.params.id ?? "");
+    const id = String(req.params.id ?? "");
 
     try {
-      const changeset = await Changeset.findById(changesetId);
+      const changeset =
+        (await Changeset.findById(id)) ??
+        (await Changeset.findOne({ $or: [{ _id: id }, { runId: id }] }));
       if (!changeset) {
         res.status(404).json({ error: "Changeset not found" });
         return;
@@ -57,11 +61,13 @@ export function createChangesetsRouter(): Router {
 
   // POST /api/changesets/:id/reject
   router.post("/changesets/:id/reject", async (req: Request, res: Response) => {
-    const changesetId = String(req.params.id ?? "");
+    const id = String(req.params.id ?? "");
     const config = getConfig();
 
     try {
-      const changeset = await Changeset.findById(changesetId);
+      const changeset =
+        (await Changeset.findById(id)) ??
+        (await Changeset.findOne({ $or: [{ _id: id }, { runId: id }] }));
       if (!changeset) {
         res.status(404).json({ error: "Changeset not found" });
         return;

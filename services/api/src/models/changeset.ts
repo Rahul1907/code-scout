@@ -13,7 +13,8 @@ export interface ITestResult {
   passed: boolean;
 }
 
-export interface IChangeset extends Document {
+export interface IChangeset {
+  _id: string;
   runId: string;
   repoId: string;
   files: IChangedFile[];
@@ -49,6 +50,7 @@ const testResultSchema = new Schema<ITestResult>(
 
 const changesetSchema = new Schema<IChangeset>(
   {
+    _id: { type: String, required: true },
     runId: { type: String, required: true, index: true },
     repoId: { type: String, required: true, index: true },
     files: { type: [changedFileSchema], default: [] },

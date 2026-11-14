@@ -163,7 +163,7 @@ export type SseEvent =
   | { type: "retrieval_debug"; data: { chunks: RetrievedChunk[] } }
   | { type: "token"; data: { text: string } }
   | { type: "citation"; data: Citation }
-  | { type: "changeset_ready"; data: { changesetId: string } }
+  | { type: "changeset_ready"; data: { changesetId: string; runId?: string } }
   | {
       type: "run_completed";
       data: {

@@ -151,8 +151,9 @@ export function ChatPanel({ repoId, repoStatus, onSelectCitation }: ChatPanelPro
         if (!active) return;
         setMessages(msgs);
         for (const m of msgs) {
-          if (m.runId && !changesets[m.runId]) {
-            getChangesetByRunId(m.runId)
+          const idToFetch = m.runId || m.changesetId;
+          if (idToFetch && !changesets[idToFetch]) {
+            getChangesetByRunId(idToFetch)
               .then((cs) => {
                 if (cs && active) {
                   setChangesets((prev) => ({
@@ -227,18 +228,24 @@ export function ChatPanel({ repoId, repoStatus, onSelectCitation }: ChatPanelPro
           if (evt.type === "run_started") {
             setStreamingRunId(evt.data.runId);
           } else if (evt.type === "changeset_ready") {
-            setStreamingChangesetId(evt.data.changesetId);
-            getChangesetByRunId(evt.data.changesetId)
-              .then((cs) => {
-                if (cs) {
-                  setChangesets((prev) => ({
-                    ...prev,
-                    [cs.runId]: cs,
-                    [cs._id]: cs,
-                  }));
-                }
-              })
-              .catch(() => {});
+            const csId = evt.data.changesetId;
+            const rId = evt.data.runId || streamingRunId;
+            setStreamingChangesetId(csId);
+            const lookupKey = rId || csId;
+            if (lookupKey) {
+              getChangesetByRunId(lookupKey)
+                .then((cs) => {
+                  if (cs) {
+                    setChangesets((prev) => ({
+                      ...prev,
+                      [cs.runId]: cs,
+                      [cs._id]: cs,
+                      ...(rId ? { [rId]: cs } : {}),
+                    }));
+                  }
+                })
+                .catch(() => {});
+            }
           } else if (evt.type === "tool_call") {
             const rawInput = evt.data.input;
             const inputStr =
@@ -298,8 +305,9 @@ export function ChatPanel({ repoId, repoStatus, onSelectCitation }: ChatPanelPro
       const refreshed = await listMessages(activeConvId);
       setMessages(refreshed);
       for (const m of refreshed) {
-        if (m.runId) {
-          getChangesetByRunId(m.runId)
+        const idToFetch = m.runId || m.changesetId;
+        if (idToFetch) {
+          getChangesetByRunId(idToFetch)
             .then((cs) => {
               if (cs) {
                 setChangesets((prev) => ({
@@ -420,12 +428,17 @@ export function ChatPanel({ repoId, repoStatus, onSelectCitation }: ChatPanelPro
               }
             >
               {msg.role === "assistant" && (msg.steps?.length ?? 0) > 0 && (
-                <AgentTimeline steps={msg.steps!} defaultOpen={false} />
+                <AgentTimeline steps={msg.steps!} defaultOpen={true} />
               )}
 
-              {msg.role === "assistant" && msg.runId && changesets[msg.runId] ? (
+              {msg.role === "assistant" &&
+              ((msg.runId && changesets[msg.runId]) ||
+                (msg.changesetId && changesets[msg.changesetId])) ? (
                 <ChangesetView
-                  changeset={changesets[msg.runId]!}
+                  changeset={
+                    (msg.runId ? changesets[msg.runId] : undefined) ||
+                    (msg.changesetId ? changesets[msg.changesetId] : undefined)!
+                  }
                   onStatusChange={(updated) =>
                     setChangesets((prev) => ({
                       ...prev,
@@ -482,12 +495,16 @@ export function ChatPanel({ repoId, repoStatus, onSelectCitation }: ChatPanelPro
             className="max-w-[95%] rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm text-[var(--text)]"
           >
             {streamingSteps.length > 0 && (
-              <AgentTimeline steps={streamingSteps} isLive={!streamingText} defaultOpen={true} />
+              <AgentTimeline steps={streamingSteps} isLive={true} defaultOpen={true} />
             )}
 
-            {streamingRunId && changesets[streamingRunId] ? (
+            {((streamingRunId && changesets[streamingRunId]) ||
+              (streamingChangesetId && changesets[streamingChangesetId])) ? (
               <ChangesetView
-                changeset={changesets[streamingRunId]!}
+                changeset={
+                  (streamingRunId ? changesets[streamingRunId] : undefined) ||
+                  (streamingChangesetId ? changesets[streamingChangesetId] : undefined)!
+                }
                 onStatusChange={(updated) =>
                   setChangesets((prev) => ({
                     ...prev,
@@ -572,7 +589,7 @@ export function ChatPanel({ repoId, repoStatus, onSelectCitation }: ChatPanelPro
               className={`flex items-center gap-1.5 rounded-md px-3 py-1 font-medium transition-colors ${
                 mode === "ask"
                   ? "bg-[var(--accent)] text-white shadow-sm"
-                  : "text-[var(--text-muted)] hover:text-[var(--text)]"
+                  : "text-[var(--muted)] hover:text-[var(--text)]"
               }`}
             >
               <MessageSquare className="h-3.5 w-3.5" />
@@ -586,7 +603,7 @@ export function ChatPanel({ repoId, repoStatus, onSelectCitation }: ChatPanelPro
               className={`flex items-center gap-1.5 rounded-md px-3 py-1 font-medium transition-colors ${
                 mode === "edit"
                   ? "bg-amber-600 text-white shadow-sm"
-                  : "text-[var(--text-muted)] hover:text-[var(--text)]"
+                  : "text-[var(--muted)] hover:text-[var(--text)]"
               }`}
             >
               <Wrench className="h-3.5 w-3.5" />
@@ -594,7 +611,7 @@ export function ChatPanel({ repoId, repoStatus, onSelectCitation }: ChatPanelPro
             </button>
           </div>
 
-          <span className="text-[11px] text-[var(--text-muted)]">
+          <span className="text-[11px] text-[var(--muted)]">
             {mode === "edit"
               ? "Agent modifies code, runs tests in Docker sandbox, and creates diff review"
               : "Read-only exploration and answers with citations"}

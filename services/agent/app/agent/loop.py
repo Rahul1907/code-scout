@@ -427,7 +427,10 @@ async def run_agent_loop(
                 )
                 if changeset_doc:
                     status = "awaiting_approval"
-                    yield format_sse("changeset_ready", {"changesetId": changeset_doc["_id"]})
+                    yield format_sse(
+                        "changeset_ready",
+                        {"changesetId": changeset_doc["_id"], "runId": run_id},
+                    )
             except Exception as cs_err:
                 logger.warning("Error creating changeset for run %s: %s", run_id, cs_err)
 

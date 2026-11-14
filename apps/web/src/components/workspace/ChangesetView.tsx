@@ -146,7 +146,7 @@ export function ChangesetView({ changeset, onStatusChange }: ChangesetViewProps)
   return (
     <div className="my-3 flex flex-col rounded-lg border border-[var(--border)] bg-[var(--surface)] text-xs text-[var(--text)] shadow-sm">
       {/* Header bar */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border)] px-3 py-2.5 bg-[var(--surface-elevated)]">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border)] px-3 py-2.5 bg-[var(--surface-alt)]">
         <div className="flex items-center gap-2">
           <Code2 className="h-4 w-4 text-[var(--accent)]" />
           <span className="font-semibold text-sm">Review Changeset</span>
@@ -157,7 +157,7 @@ export function ChangesetView({ changeset, onStatusChange }: ChangesetViewProps)
           >
             {currentChangeset.status.replace("_", " ")}
           </span>
-          <span className="text-[var(--text-muted)]">
+          <span className="text-[var(--muted)]">
             ({files.length} file{files.length === 1 ? "" : "s"} modified)
           </span>
         </div>
@@ -261,7 +261,7 @@ export function ChangesetView({ changeset, onStatusChange }: ChangesetViewProps)
                 className={`flex items-center gap-1.5 rounded px-2 py-1 font-mono text-xs transition-colors ${
                   isSelected
                     ? "bg-[var(--accent)] text-white font-medium shadow-sm"
-                    : "text-[var(--text-muted)] hover:bg-[var(--surface-elevated)] hover:text-[var(--text)]"
+                    : "text-[var(--muted)] hover:bg-[var(--surface-alt)] hover:text-[var(--text)]"
                 }`}
               >
                 <FileCode className="h-3 w-3" />
@@ -281,7 +281,7 @@ export function ChangesetView({ changeset, onStatusChange }: ChangesetViewProps)
             className={`rounded px-2 py-0.5 text-[11px] ${
               viewMode === "diff"
                 ? "bg-[var(--border)] font-medium text-[var(--text)]"
-                : "text-[var(--text-muted)] hover:text-[var(--text)]"
+                : "text-[var(--muted)] hover:text-[var(--text)]"
             }`}
           >
             Side-by-Side
@@ -292,7 +292,7 @@ export function ChangesetView({ changeset, onStatusChange }: ChangesetViewProps)
             className={`rounded px-2 py-0.5 text-[11px] ${
               viewMode === "patch"
                 ? "bg-[var(--border)] font-medium text-[var(--text)]"
-                : "text-[var(--text-muted)] hover:text-[var(--text)]"
+                : "text-[var(--muted)] hover:text-[var(--text)]"
             }`}
           >
             Patch
@@ -320,11 +320,11 @@ export function ChangesetView({ changeset, onStatusChange }: ChangesetViewProps)
             }}
           />
         ) : activeFile && viewMode === "patch" ? (
-          <pre className="h-[320px] overflow-auto p-3 font-mono text-[11px] leading-relaxed bg-[var(--surface-elevated)] whitespace-pre-wrap">
+          <pre className="h-[320px] overflow-auto p-3 font-mono text-[11px] leading-relaxed bg-[var(--surface-alt)] whitespace-pre-wrap">
             {activeFile.diff}
           </pre>
         ) : (
-          <div className="flex h-40 items-center justify-center text-[var(--text-muted)]">
+          <div className="flex h-40 items-center justify-center text-[var(--muted)]">
             No changed files selected
           </div>
         )}
