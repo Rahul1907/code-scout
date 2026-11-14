@@ -1,11 +1,29 @@
 "use client";
 
-import { FileText, Loader2, MessageSquarePlus, Send, SlidersHorizontal, Square } from "lucide-react";
+import {
+  Code2,
+  FileText,
+  Loader2,
+  MessageSquare,
+  MessageSquarePlus,
+  Send,
+  SlidersHorizontal,
+  Square,
+  Wrench,
+} from "lucide-react";
 import { Fragment, useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { Button } from "@/components/ui/button";
-import { cancelRun, createConversation, listConversations, listMessages, streamMessage } from "@/lib/api";
+import {
+  cancelRun,
+  createConversation,
+  getChangesetByRunId,
+  listConversations,
+  listMessages,
+  streamMessage,
+} from "@/lib/api";
 import type {
   AgentStep,
+  ChangesetItem,
   Citation,
   ConversationItem,
   MessageItem,
@@ -14,6 +32,7 @@ import type {
   RunSummary,
 } from "@/lib/types";
 import { AgentTimeline } from "./AgentTimeline";
+import { ChangesetView } from "./ChangesetView";
 import { RetrievalDebugView } from "./RetrievalDebugView";
 import { RunSummaryView } from "./RunSummaryView";
 
@@ -85,6 +104,9 @@ export function ChatPanel({ repoId, repoStatus, onSelectCitation }: ChatPanelPro
   const [streamingRunId, setStreamingRunId] = useState<string | null>(null);
   const [streamingSteps, setStreamingSteps] = useState<AgentStep[]>([]);
   const [streamingRunSummary, setStreamingRunSummary] = useState<RunSummary | null>(null);
+  const [mode, setMode] = useState<"ask" | "edit">("ask");
+  const [changesets, setChangesets] = useState<Record<string, ChangesetItem>>({});
+  const [streamingChangesetId, setStreamingChangesetId] = useState<string | null>(null);
 
   const selectId = useId();
   const promptId = useId();
@@ -126,7 +148,23 @@ export function ChatPanel({ repoId, repoStatus, onSelectCitation }: ChatPanelPro
     let active = true;
     listMessages(activeConvId)
       .then((msgs) => {
-        if (active) setMessages(msgs);
+        if (!active) return;
+        setMessages(msgs);
+        for (const m of msgs) {
+          if (m.runId && !changesets[m.runId]) {
+            getChangesetByRunId(m.runId)
+              .then((cs) => {
+                if (cs && active) {
+                  setChangesets((prev) => ({
+                    ...prev,
+                    [cs.runId]: cs,
+                    [cs._id]: cs,
+                  }));
+                }
+              })
+              .catch(() => {});
+          }
+        }
       })
       .catch((err) => {
         if (active) setError(err instanceof Error ? err.message : "Failed to load messages");
@@ -166,6 +204,7 @@ export function ChatPanel({ repoId, repoStatus, onSelectCitation }: ChatPanelPro
     setStreamingRunId(null);
     setStreamingSteps([]);
     setStreamingRunSummary(null);
+    setStreamingChangesetId(null);
 
     const optimisticUserMsg: MessageItem = {
       _id: `tmp-user-${Date.now()}`,
@@ -181,64 +220,98 @@ export function ChatPanel({ repoId, repoStatus, onSelectCitation }: ChatPanelPro
     const collectedCitations: Citation[] = [];
 
     try {
-      await streamMessage(activeConvId, trimmed, (evt) => {
-        if (evt.type === "run_started") {
-          setStreamingRunId(evt.data.runId);
-        } else if (evt.type === "tool_call") {
-          const rawInput = evt.data.input;
-          const inputStr =
-            typeof rawInput === "object" ? JSON.stringify(rawInput) : String(rawInput ?? "");
-          setStreamingSteps((prev) => [
-            ...prev,
-            {
-              index: evt.data.index,
-              type: "tool_call",
-              toolName: evt.data.toolName,
-              inputSummary: inputStr.slice(0, 150),
-              outputSummary: "",
-              durationMs: 0,
-            },
-          ]);
-        } else if (evt.type === "tool_result") {
-          setStreamingSteps((prev) =>
-            prev.map((s) =>
-              s.index === evt.data.index && s.toolName === evt.data.toolName
-                ? {
-                    ...s,
-                    outputSummary: evt.data.outputSummary,
-                    durationMs: evt.data.durationMs,
-                  }
-                : s,
-            ),
-          );
-        } else if (evt.type === "run_completed") {
-          if (evt.data.totals) {
-            setStreamingRunSummary(evt.data.totals as RunSummary);
+      await streamMessage(
+        activeConvId,
+        trimmed,
+        (evt) => {
+          if (evt.type === "run_started") {
+            setStreamingRunId(evt.data.runId);
+          } else if (evt.type === "changeset_ready") {
+            setStreamingChangesetId(evt.data.changesetId);
+            getChangesetByRunId(evt.data.changesetId)
+              .then((cs) => {
+                if (cs) {
+                  setChangesets((prev) => ({
+                    ...prev,
+                    [cs.runId]: cs,
+                    [cs._id]: cs,
+                  }));
+                }
+              })
+              .catch(() => {});
+          } else if (evt.type === "tool_call") {
+            const rawInput = evt.data.input;
+            const inputStr =
+              typeof rawInput === "object" ? JSON.stringify(rawInput) : String(rawInput ?? "");
+            setStreamingSteps((prev) => [
+              ...prev,
+              {
+                index: evt.data.index,
+                type: "tool_call",
+                toolName: evt.data.toolName,
+                inputSummary: inputStr.slice(0, 150),
+                outputSummary: "",
+                durationMs: 0,
+              },
+            ]);
+          } else if (evt.type === "tool_result") {
+            setStreamingSteps((prev) =>
+              prev.map((s) =>
+                s.index === evt.data.index && s.toolName === evt.data.toolName
+                  ? {
+                      ...s,
+                      outputSummary: evt.data.outputSummary,
+                      durationMs: evt.data.durationMs,
+                    }
+                  : s,
+              ),
+            );
+          } else if (evt.type === "run_completed") {
+            if (evt.data.totals) {
+              setStreamingRunSummary(evt.data.totals as RunSummary);
+            }
+          } else if (evt.type === "token") {
+            finalContent += evt.data.text;
+            setStreamingText(finalContent);
+          } else if (evt.type === "retrieval_debug") {
+            setStreamingRetrievedChunks(evt.data.chunks);
+          } else if (evt.type === "citation") {
+            const cit = evt.data;
+            const dup = collectedCitations.some(
+              (c) =>
+                c.filePath === cit.filePath &&
+                c.startLine === cit.startLine &&
+                c.endLine === cit.endLine,
+            );
+            if (!dup) {
+              collectedCitations.push(cit);
+              setStreamingCitations([...collectedCitations]);
+            }
+          } else if (evt.type === "error") {
+            setError(evt.data.message);
           }
-        } else if (evt.type === "token") {
-          finalContent += evt.data.text;
-          setStreamingText(finalContent);
-        } else if (evt.type === "retrieval_debug") {
-          setStreamingRetrievedChunks(evt.data.chunks);
-        } else if (evt.type === "citation") {
-          const cit = evt.data;
-          const dup = collectedCitations.some(
-            (c) =>
-              c.filePath === cit.filePath &&
-              c.startLine === cit.startLine &&
-              c.endLine === cit.endLine,
-          );
-          if (!dup) {
-            collectedCitations.push(cit);
-            setStreamingCitations([...collectedCitations]);
-          }
-        } else if (evt.type === "error") {
-          setError(evt.data.message);
-        }
-      });
+        },
+        undefined,
+        mode,
+      );
 
       const refreshed = await listMessages(activeConvId);
       setMessages(refreshed);
+      for (const m of refreshed) {
+        if (m.runId) {
+          getChangesetByRunId(m.runId)
+            .then((cs) => {
+              if (cs) {
+                setChangesets((prev) => ({
+                  ...prev,
+                  [cs.runId]: cs,
+                  [cs._id]: cs,
+                }));
+              }
+            })
+            .catch(() => {});
+        }
+      }
       const updatedConvs = await listConversations(repoId);
       setConversations(updatedConvs);
     } catch (err) {
@@ -250,6 +323,7 @@ export function ChatPanel({ repoId, repoStatus, onSelectCitation }: ChatPanelPro
       setStreamingRunId(null);
       setStreamingSteps([]);
       setStreamingRunSummary(null);
+      setStreamingChangesetId(null);
       setIsStreaming(false);
     }
   };
@@ -349,6 +423,19 @@ export function ChatPanel({ repoId, repoStatus, onSelectCitation }: ChatPanelPro
                 <AgentTimeline steps={msg.steps!} defaultOpen={false} />
               )}
 
+              {msg.role === "assistant" && msg.runId && changesets[msg.runId] ? (
+                <ChangesetView
+                  changeset={changesets[msg.runId]!}
+                  onStatusChange={(updated) =>
+                    setChangesets((prev) => ({
+                      ...prev,
+                      [updated.runId]: updated,
+                      [updated._id]: updated,
+                    }))
+                  }
+                />
+              ) : null}
+
               <div className="whitespace-pre-wrap leading-relaxed">
                 {msg.role === "assistant"
                   ? renderMessageWithCitations(msg.content, onSelectCitation)
@@ -397,6 +484,19 @@ export function ChatPanel({ repoId, repoStatus, onSelectCitation }: ChatPanelPro
             {streamingSteps.length > 0 && (
               <AgentTimeline steps={streamingSteps} isLive={!streamingText} defaultOpen={true} />
             )}
+
+            {streamingRunId && changesets[streamingRunId] ? (
+              <ChangesetView
+                changeset={changesets[streamingRunId]!}
+                onStatusChange={(updated) =>
+                  setChangesets((prev) => ({
+                    ...prev,
+                    [updated.runId]: updated,
+                    [updated._id]: updated,
+                  }))
+                }
+              />
+            ) : null}
 
             {streamingText ? (
               <div className="whitespace-pre-wrap leading-relaxed">
@@ -461,8 +561,48 @@ export function ChatPanel({ repoId, repoStatus, onSelectCitation }: ChatPanelPro
         onSubmit={handleSubmit}
         className="border-t border-[var(--border)] bg-[var(--surface)] p-3"
       >
+        {/* Mode Selector */}
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--bg)] p-0.5 text-xs">
+            <button
+              type="button"
+              onClick={() => setMode("ask")}
+              disabled={isStreaming}
+              aria-pressed={mode === "ask"}
+              className={`flex items-center gap-1.5 rounded-md px-3 py-1 font-medium transition-colors ${
+                mode === "ask"
+                  ? "bg-[var(--accent)] text-white shadow-sm"
+                  : "text-[var(--text-muted)] hover:text-[var(--text)]"
+              }`}
+            >
+              <MessageSquare className="h-3.5 w-3.5" />
+              <span>Ask</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode("edit")}
+              disabled={isStreaming}
+              aria-pressed={mode === "edit"}
+              className={`flex items-center gap-1.5 rounded-md px-3 py-1 font-medium transition-colors ${
+                mode === "edit"
+                  ? "bg-amber-600 text-white shadow-sm"
+                  : "text-[var(--text-muted)] hover:text-[var(--text)]"
+              }`}
+            >
+              <Wrench className="h-3.5 w-3.5" />
+              <span>Edit (Sandbox)</span>
+            </button>
+          </div>
+
+          <span className="text-[11px] text-[var(--text-muted)]">
+            {mode === "edit"
+              ? "Agent modifies code, runs tests in Docker sandbox, and creates diff review"
+              : "Read-only exploration and answers with citations"}
+          </span>
+        </div>
+
         <label htmlFor={promptId} className="sr-only">
-          Ask a question about the repository
+          Ask a question or request a code change
         </label>
         <div className="flex items-end gap-2">
           <textarea
@@ -475,7 +615,9 @@ export function ChatPanel({ repoId, repoStatus, onSelectCitation }: ChatPanelPro
             disabled={isStreaming || repoStatus !== "ready"}
             placeholder={
               repoStatus === "ready"
-                ? "Ask a question about this codebase... (Enter to send, Shift+Enter for newline)"
+                ? mode === "edit"
+                  ? "Describe what bug to fix or change to make... (Agent will edit code and run tests in sandbox)"
+                  : "Ask a question about this codebase... (Enter to send, Shift+Enter for newline)"
                 : `Repository is ${repoStatus}. Chat unlocks when indexing completes.`
             }
             className="min-h-[44px] flex-1 resize-y rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--text)] focus:border-[var(--accent)] focus:outline-none disabled:opacity-60"
@@ -494,9 +636,19 @@ export function ChatPanel({ repoId, repoStatus, onSelectCitation }: ChatPanelPro
             <Button
               type="submit"
               disabled={!input.trim() || repoStatus !== "ready"}
+              className={mode === "edit" ? "bg-amber-600 hover:bg-amber-700 text-white" : ""}
             >
-              <Send className="h-4 w-4" aria-hidden="true" />
-              <span>Ask</span>
+              {mode === "edit" ? (
+                <>
+                  <Wrench className="h-4 w-4" aria-hidden="true" />
+                  <span>Plan & Edit</span>
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4" aria-hidden="true" />
+                  <span>Ask</span>
+                </>
+              )}
             </Button>
           )}
         </div>

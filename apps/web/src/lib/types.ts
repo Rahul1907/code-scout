@@ -104,6 +104,31 @@ export interface RunSummary {
   estimatedCostUsd: number;
 }
 
+export interface ChangedFile {
+  path: string;
+  changeType: "added" | "modified" | "deleted";
+  diff: string;
+}
+
+export interface TestResult {
+  exitCode: number;
+  stdoutTail: string;
+  stderrTail: string;
+  passed: boolean;
+}
+
+export interface ChangesetItem {
+  _id: string;
+  runId: string;
+  repoId: string;
+  files: ChangedFile[];
+  testCommand?: string;
+  testResult?: TestResult;
+  status: "pending_review" | "approved" | "rejected";
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface MessageItem {
   _id: string;
   conversationId: string;
@@ -114,6 +139,8 @@ export interface MessageItem {
   steps?: AgentStep[];
   runSummary?: RunSummary;
   runId?: string;
+  changesetId?: string;
+  mode?: "ask" | "edit";
   createdAt: string;
 }
 
@@ -136,6 +163,7 @@ export type SseEvent =
   | { type: "retrieval_debug"; data: { chunks: RetrievedChunk[] } }
   | { type: "token"; data: { text: string } }
   | { type: "citation"; data: Citation }
+  | { type: "changeset_ready"; data: { changesetId: string } }
   | {
       type: "run_completed";
       data: {

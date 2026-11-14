@@ -1,4 +1,5 @@
 import type {
+  ChangesetItem,
   ConversationItem,
   FileContentResponse,
   GitHubRepoItem,
@@ -150,6 +151,7 @@ export async function streamMessage(
   content: string,
   onEvent: (event: SseEvent) => void,
   signal?: AbortSignal,
+  mode: "ask" | "edit" = "ask",
 ): Promise<void> {
   const res = await fetch(
     `/api/conversations/${encodeURIComponent(conversationId)}/messages`,
@@ -157,7 +159,7 @@ export async function streamMessage(
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content, mode: "ask" }),
+      body: JSON.stringify({ content, mode }),
       signal,
     },
   );
@@ -225,4 +227,32 @@ export async function cancelRun(runId: string): Promise<void> {
     const data = (await res.json().catch(() => ({}))) as { error?: string };
     throw new Error(data.error ?? "Failed to cancel run");
   }
+}
+
+export async function getChangesetByRunId(runId: string): Promise<ChangesetItem | null> {
+  try {
+    const data = await apiFetch<{ changeset: ChangesetItem }>(`/api/runs/${runId}/changeset`);
+    return data.changeset;
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) {
+      return null;
+    }
+    throw err;
+  }
+}
+
+export async function approveChangeset(changesetId: string): Promise<ChangesetItem> {
+  const data = await apiFetch<{ changeset: ChangesetItem }>(
+    `/api/changesets/${changesetId}/approve`,
+    { method: "POST" }
+  );
+  return data.changeset;
+}
+
+export async function rejectChangeset(changesetId: string): Promise<ChangesetItem> {
+  const data = await apiFetch<{ changeset: ChangesetItem }>(
+    `/api/changesets/${changesetId}/reject`,
+    { method: "POST" }
+  );
+  return data.changeset;
 }
