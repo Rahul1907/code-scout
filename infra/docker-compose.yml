@@ -24,12 +24,38 @@ services:
       timeout: 5s
       retries: 5
 
+  docker-socket-proxy:
+    image: tecnativa/docker-socket-proxy:latest
+    container_name: code-scout-docker-proxy-1
+    environment:
+      CONTAINERS: "1"
+      POST: "1"
+      EXEC: "1"
+      IMAGES: "1"
+      INFO: "1"
+      BUILD: "0"
+      NETWORKS: "0"
+      VOLUMES: "0"
+      AUTH: "0"
+      SECRETS: "0"
+      SWARM: "0"
+      TASKS: "0"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    ports:
+      - "127.0.0.1:2375:2375"
+    expose:
+      - "2375"
+    restart: unless-stopped
+
   agent:
     build:
       context: ../services/agent
       dockerfile: Dockerfile
     env_file:
       - ../.env
+    environment:
+      DOCKER_HOST: http://docker-socket-proxy:2375
     expose:
       - "8000"
     volumes:
@@ -42,6 +68,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      docker-socket-proxy:
+        condition: service_started
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8000/internal/health || exit 1"]
       interval: 10s

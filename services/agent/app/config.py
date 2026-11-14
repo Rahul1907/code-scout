@@ -36,6 +36,31 @@ class Settings(BaseSettings):
     max_agent_steps: int = 15
     repos_dir: str = "/data/repos"
 
+    docker_host: str = Field(
+        default="http://docker-socket-proxy:2375",
+        validation_alias=AliasChoices("DOCKER_HOST", "docker_host"),
+    )
+    sandbox_image: str = Field(
+        default="codescout-sandbox:latest",
+        validation_alias=AliasChoices("SANDBOX_IMAGE", "sandbox_image"),
+    )
+    sandbox_timeout_seconds: int = Field(
+        default=120,
+        validation_alias=AliasChoices("SANDBOX_TIMEOUT_SECONDS", "sandbox_timeout_seconds"),
+    )
+    sandbox_memory: str = Field(
+        default="1g",
+        validation_alias=AliasChoices("SANDBOX_MEMORY", "sandbox_memory"),
+    )
+    sandbox_cpus: float = Field(
+        default=1.0,
+        validation_alias=AliasChoices("SANDBOX_CPUS", "sandbox_cpus"),
+    )
+    repos_volume_host_path: str = Field(
+        default="/var/lib/docker/volumes/code-scout_repos_data/_data",
+        validation_alias=AliasChoices("REPOS_VOLUME_HOST_PATH", "repos_volume_host_path"),
+    )
+
 
 @lru_cache
 def get_settings() -> Settings:
