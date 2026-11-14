@@ -27,6 +27,29 @@ const retrievedChunkSchema = new Schema(
   { _id: false },
 );
 
+const stepSchema = new Schema(
+  {
+    index: { type: Number, required: true },
+    type: { type: String, required: true },
+    toolName: { type: String, default: undefined },
+    inputSummary: { type: String, default: undefined },
+    outputSummary: { type: String, default: undefined },
+    durationMs: { type: Number, default: 0 },
+  },
+  { _id: false },
+);
+
+const runSummarySchema = new Schema(
+  {
+    tokensIn: { type: Number, default: 0 },
+    tokensOut: { type: Number, default: 0 },
+    llmCalls: { type: Number, default: 0 },
+    durationMs: { type: Number, default: 0 },
+    estimatedCostUsd: { type: Number, default: 0 },
+  },
+  { _id: false },
+);
+
 const messageSchema = new Schema(
   {
     conversationId: {
@@ -39,6 +62,8 @@ const messageSchema = new Schema(
     content: { type: String, required: true },
     citations: { type: [citationSchema], default: [] },
     retrievedChunks: { type: [retrievedChunkSchema], default: [] },
+    steps: { type: [stepSchema], default: [] },
+    runSummary: { type: runSummarySchema, default: undefined },
     runId: { type: String, default: undefined },
   },
   { timestamps: true },

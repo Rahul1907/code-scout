@@ -87,6 +87,23 @@ export interface ConversationItem {
   updatedAt: string;
 }
 
+export interface AgentStep {
+  index: number;
+  type: string;
+  toolName?: string;
+  inputSummary?: string;
+  outputSummary?: string;
+  durationMs?: number;
+}
+
+export interface RunSummary {
+  tokensIn: number;
+  tokensOut: number;
+  llmCalls: number;
+  durationMs: number;
+  estimatedCostUsd: number;
+}
+
 export interface MessageItem {
   _id: string;
   conversationId: string;
@@ -94,12 +111,28 @@ export interface MessageItem {
   content: string;
   citations: Citation[];
   retrievedChunks?: RetrievedChunk[];
+  steps?: AgentStep[];
+  runSummary?: RunSummary;
   runId?: string;
   createdAt: string;
 }
 
 export type SseEvent =
   | { type: "run_started"; data: { runId: string } }
+  | { type: "step_started"; data: { index: number; type: string } }
+  | {
+      type: "tool_call";
+      data: { index: number; toolName: string; input: unknown };
+    }
+  | {
+      type: "tool_result";
+      data: {
+        index: number;
+        toolName: string;
+        outputSummary: string;
+        durationMs: number;
+      };
+    }
   | { type: "retrieval_debug"; data: { chunks: RetrievedChunk[] } }
   | { type: "token"; data: { text: string } }
   | { type: "citation"; data: Citation }
@@ -107,7 +140,13 @@ export type SseEvent =
       type: "run_completed";
       data: {
         runId: string;
-        totals?: { tokensIn?: number; tokensOut?: number; durationMs?: number };
+        totals?: {
+          tokensIn?: number;
+          tokensOut?: number;
+          llmCalls?: number;
+          durationMs?: number;
+          estimatedCostUsd?: number;
+        };
       };
     }
   | { type: "error"; data: { message: string; retryable?: boolean } };

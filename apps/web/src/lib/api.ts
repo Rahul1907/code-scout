@@ -215,3 +215,14 @@ export async function streamMessage(
     dispatchBlock(buffer);
   }
 }
+
+export async function cancelRun(runId: string): Promise<void> {
+  const res = await fetch(`/api/runs/${runId}/cancel`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+  });
+  if (!res.ok) {
+    const data = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(data.error ?? "Failed to cancel run");
+  }
+}

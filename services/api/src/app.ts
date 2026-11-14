@@ -6,6 +6,7 @@ import { getConfig } from "./lib/config.js";
 import { createAuthRouter } from "./routes/auth.js";
 import { createConversationsRouter } from "./routes/conversations.js";
 import { createReposRouter } from "./routes/repos.js";
+import { createRunsRouter } from "./routes/runs.js";
 
 export function createApp(): Express {
   const app = express();
@@ -32,6 +33,7 @@ export function createApp(): Express {
   app.use("/api", createAuthRouter());
   app.use("/api", createReposRouter());
   app.use("/api", createConversationsRouter());
+  app.use("/api", createRunsRouter());
 
   return app;
 }

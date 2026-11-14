@@ -1,11 +1,21 @@
 "use client";
 
-import { FileText, Loader2, MessageSquarePlus, Send, SlidersHorizontal } from "lucide-react";
+import { FileText, Loader2, MessageSquarePlus, Send, SlidersHorizontal, Square } from "lucide-react";
 import { Fragment, useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { Button } from "@/components/ui/button";
-import { createConversation, listConversations, listMessages, streamMessage } from "@/lib/api";
-import type { Citation, ConversationItem, MessageItem, RepoStatus, RetrievedChunk } from "@/lib/types";
+import { cancelRun, createConversation, listConversations, listMessages, streamMessage } from "@/lib/api";
+import type {
+  AgentStep,
+  Citation,
+  ConversationItem,
+  MessageItem,
+  RepoStatus,
+  RetrievedChunk,
+  RunSummary,
+} from "@/lib/types";
+import { AgentTimeline } from "./AgentTimeline";
 import { RetrievalDebugView } from "./RetrievalDebugView";
+import { RunSummaryView } from "./RunSummaryView";
 
 interface ChatPanelProps {
   repoId: string;
@@ -72,6 +82,9 @@ export function ChatPanel({ repoId, repoStatus, onSelectCitation }: ChatPanelPro
   const [error, setError] = useState<string | null>(null);
   const [showDebugPanel, setShowDebugPanel] = useState(false);
   const [streamingRetrievedChunks, setStreamingRetrievedChunks] = useState<RetrievedChunk[]>([]);
+  const [streamingRunId, setStreamingRunId] = useState<string | null>(null);
+  const [streamingSteps, setStreamingSteps] = useState<AgentStep[]>([]);
+  const [streamingRunSummary, setStreamingRunSummary] = useState<RunSummary | null>(null);
 
   const selectId = useId();
   const promptId = useId();
@@ -150,6 +163,9 @@ export function ChatPanel({ repoId, repoStatus, onSelectCitation }: ChatPanelPro
     setStreamingText("");
     setStreamingCitations([]);
     setStreamingRetrievedChunks([]);
+    setStreamingRunId(null);
+    setStreamingSteps([]);
+    setStreamingRunSummary(null);
 
     const optimisticUserMsg: MessageItem = {
       _id: `tmp-user-${Date.now()}`,
@@ -166,7 +182,40 @@ export function ChatPanel({ repoId, repoStatus, onSelectCitation }: ChatPanelPro
 
     try {
       await streamMessage(activeConvId, trimmed, (evt) => {
-        if (evt.type === "token") {
+        if (evt.type === "run_started") {
+          setStreamingRunId(evt.data.runId);
+        } else if (evt.type === "tool_call") {
+          const rawInput = evt.data.input;
+          const inputStr =
+            typeof rawInput === "object" ? JSON.stringify(rawInput) : String(rawInput ?? "");
+          setStreamingSteps((prev) => [
+            ...prev,
+            {
+              index: evt.data.index,
+              type: "tool_call",
+              toolName: evt.data.toolName,
+              inputSummary: inputStr.slice(0, 150),
+              outputSummary: "",
+              durationMs: 0,
+            },
+          ]);
+        } else if (evt.type === "tool_result") {
+          setStreamingSteps((prev) =>
+            prev.map((s) =>
+              s.index === evt.data.index && s.toolName === evt.data.toolName
+                ? {
+                    ...s,
+                    outputSummary: evt.data.outputSummary,
+                    durationMs: evt.data.durationMs,
+                  }
+                : s,
+            ),
+          );
+        } else if (evt.type === "run_completed") {
+          if (evt.data.totals) {
+            setStreamingRunSummary(evt.data.totals as RunSummary);
+          }
+        } else if (evt.type === "token") {
           finalContent += evt.data.text;
           setStreamingText(finalContent);
         } else if (evt.type === "retrieval_debug") {
@@ -198,7 +247,19 @@ export function ChatPanel({ repoId, repoStatus, onSelectCitation }: ChatPanelPro
       setStreamingText("");
       setStreamingCitations([]);
       setStreamingRetrievedChunks([]);
+      setStreamingRunId(null);
+      setStreamingSteps([]);
+      setStreamingRunSummary(null);
       setIsStreaming(false);
+    }
+  };
+
+  const handleCancelRun = async () => {
+    if (!streamingRunId) return;
+    try {
+      await cancelRun(streamingRunId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to cancel run");
     }
   };
 
@@ -284,6 +345,10 @@ export function ChatPanel({ repoId, repoStatus, onSelectCitation }: ChatPanelPro
                   : "max-w-[95%] rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm text-[var(--text)]"
               }
             >
+              {msg.role === "assistant" && (msg.steps?.length ?? 0) > 0 && (
+                <AgentTimeline steps={msg.steps!} defaultOpen={false} />
+              )}
+
               <div className="whitespace-pre-wrap leading-relaxed">
                 {msg.role === "assistant"
                   ? renderMessageWithCitations(msg.content, onSelectCitation)
@@ -316,6 +381,10 @@ export function ChatPanel({ repoId, repoStatus, onSelectCitation }: ChatPanelPro
                   onSelectCitation={onSelectCitation}
                 />
               )}
+
+              {msg.role === "assistant" && msg.runSummary && (
+                <RunSummaryView summary={msg.runSummary} stepCount={msg.steps?.length} />
+              )}
             </article>
           ))
         )}
@@ -325,6 +394,10 @@ export function ChatPanel({ repoId, repoStatus, onSelectCitation }: ChatPanelPro
             aria-live="polite"
             className="max-w-[95%] rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm text-[var(--text)]"
           >
+            {streamingSteps.length > 0 && (
+              <AgentTimeline steps={streamingSteps} isLive={!streamingText} defaultOpen={true} />
+            )}
+
             {streamingText ? (
               <div className="whitespace-pre-wrap leading-relaxed">
                 {renderMessageWithCitations(streamingText, onSelectCitation)}
@@ -332,7 +405,11 @@ export function ChatPanel({ repoId, repoStatus, onSelectCitation }: ChatPanelPro
             ) : (
               <div className="flex items-center gap-2 text-xs text-[var(--muted)]">
                 <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-                <span>Searching indexed code and thinking...</span>
+                <span>
+                  {streamingSteps.length > 0
+                    ? "Agent reasoning and calling tools..."
+                    : "Searching indexed code and thinking..."}
+                </span>
               </div>
             )}
 
@@ -361,6 +438,10 @@ export function ChatPanel({ repoId, repoStatus, onSelectCitation }: ChatPanelPro
                 defaultOpen={showDebugPanel || true}
                 onSelectCitation={onSelectCitation}
               />
+            )}
+
+            {streamingRunSummary && (
+              <RunSummaryView summary={streamingRunSummary} stepCount={streamingSteps.length} />
             )}
           </article>
         )}
@@ -399,17 +480,25 @@ export function ChatPanel({ repoId, repoStatus, onSelectCitation }: ChatPanelPro
             }
             className="min-h-[44px] flex-1 resize-y rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm text-[var(--text)] focus:border-[var(--accent)] focus:outline-none disabled:opacity-60"
           />
-          <Button
-            type="submit"
-            disabled={!input.trim() || isStreaming || repoStatus !== "ready"}
-          >
-            {isStreaming ? (
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-            ) : (
+          {isStreaming ? (
+            <Button
+              type="button"
+              variant="danger"
+              onClick={() => void handleCancelRun()}
+              title="Cancel running agent"
+            >
+              <Square className="h-3.5 w-3.5 fill-current" aria-hidden="true" />
+              <span>Cancel</span>
+            </Button>
+          ) : (
+            <Button
+              type="submit"
+              disabled={!input.trim() || repoStatus !== "ready"}
+            >
               <Send className="h-4 w-4" aria-hidden="true" />
-            )}
-            <span>Ask</span>
-          </Button>
+              <span>Ask</span>
+            </Button>
+          )}
         </div>
       </form>
     </section>

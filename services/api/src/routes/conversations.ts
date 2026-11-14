@@ -34,6 +34,23 @@ interface RetrievedChunkPayload {
   content?: string;
 }
 
+interface StepPayload {
+  index: number;
+  type: string;
+  toolName?: string;
+  inputSummary?: string;
+  outputSummary?: string;
+  durationMs?: number;
+}
+
+interface RunSummaryPayload {
+  tokensIn: number;
+  tokensOut: number;
+  llmCalls: number;
+  durationMs: number;
+  estimatedCostUsd: number;
+}
+
 export function createConversationsRouter(): Router {
   const router = Router();
   router.use(requireAuth);
@@ -167,6 +184,8 @@ export function createConversationsRouter(): Router {
     const citations: CitationPayload[] = [];
     const seenCitations = new Set<string>();
     const retrievedChunks: RetrievedChunkPayload[] = [];
+    const steps: StepPayload[] = [];
+    let runSummary: RunSummaryPayload | undefined = undefined;
 
     const parseSseBlock = (block: string): void => {
       let eventType = "";
@@ -198,6 +217,36 @@ export function createConversationsRouter(): Router {
               endLine: data.endLine,
             });
           }
+        } else if (eventType === "tool_call") {
+          const rawInput = data.input;
+          const inputStr =
+            typeof rawInput === "object" ? JSON.stringify(rawInput) : String(rawInput ?? "");
+          steps.push({
+            index: typeof data.index === "number" ? data.index : steps.length,
+            type: "tool_call",
+            toolName: typeof data.toolName === "string" ? data.toolName : undefined,
+            inputSummary: inputStr.slice(0, 150),
+            outputSummary: "",
+            durationMs: 0,
+          });
+        } else if (eventType === "tool_result") {
+          const last =
+            [...steps].reverse().find(
+              (s) => s.index === data.index && s.toolName === data.toolName,
+            ) ?? steps[steps.length - 1];
+          if (last) {
+            if (typeof data.outputSummary === "string") last.outputSummary = data.outputSummary;
+            if (typeof data.durationMs === "number") last.durationMs = data.durationMs;
+          }
+        } else if (eventType === "run_completed" && data.totals && typeof data.totals === "object") {
+          const t = data.totals as Record<string, unknown>;
+          runSummary = {
+            tokensIn: Number(t.tokensIn ?? 0),
+            tokensOut: Number(t.tokensOut ?? 0),
+            llmCalls: Number(t.llmCalls ?? 0),
+            durationMs: Number(t.durationMs ?? 0),
+            estimatedCostUsd: Number(t.estimatedCostUsd ?? 0),
+          };
         } else if (eventType === "retrieval_debug" && Array.isArray(data.chunks)) {
           for (const item of data.chunks) {
             if (
@@ -233,7 +282,7 @@ export function createConversationsRouter(): Router {
     };
 
     try {
-      const agentRes = await fetch(`${config.AGENT_URL}/internal/ask`, {
+      const agentRes = await fetch(`${config.AGENT_URL}/internal/run`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -242,8 +291,11 @@ export function createConversationsRouter(): Router {
         body: JSON.stringify({
           runId,
           repoId: conversation.repoId.toString(),
+          conversationId: convId,
+          userId: auth.sub,
           conversationHistory: history,
-          question: parsed.data.content,
+          instruction: parsed.data.content,
+          mode: parsed.data.mode,
         }),
       });
 
@@ -289,6 +341,8 @@ export function createConversationsRouter(): Router {
           content: assistantText,
           citations,
           retrievedChunks,
+          steps,
+          runSummary,
           runId,
         });
       }
