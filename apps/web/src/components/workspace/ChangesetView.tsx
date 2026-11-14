@@ -11,9 +11,11 @@ import {
   Loader2,
   Terminal,
   Code2,
+  GitPullRequest,
+  ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { approveChangeset, rejectChangeset } from "@/lib/api";
+import { approveChangeset, createPullRequest, rejectChangeset } from "@/lib/api";
 import type { ChangesetItem, ChangedFile } from "@/lib/types";
 
 interface ChangesetViewProps {
@@ -90,6 +92,9 @@ export function ChangesetView({ changeset, onStatusChange }: ChangesetViewProps)
   const [currentChangeset, setCurrentChangeset] = useState<ChangesetItem>(changeset);
   const [selectedFileIdx, setSelectedFileIdx] = useState(0);
   const [isActing, setIsActing] = useState(false);
+  const [isCreatingPr, setIsCreatingPr] = useState(false);
+  const [prError, setPrError] = useState<string | null>(null);
+  const [installUrl, setInstallUrl] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"diff" | "patch">("diff");
   const [isDark, setIsDark] = useState(false);
 
@@ -128,6 +133,25 @@ export function ChangesetView({ changeset, onStatusChange }: ChangesetViewProps)
       console.error("Failed to reject changeset:", err);
     } finally {
       setIsActing(false);
+    }
+  };
+
+  const handleCreatePr = async () => {
+    setIsCreatingPr(true);
+    setPrError(null);
+    setInstallUrl(null);
+    try {
+      const res = await createPullRequest(currentChangeset._id);
+      setCurrentChangeset(res.changeset);
+      onStatusChange?.(res.changeset);
+    } catch (err: any) {
+      console.error("Failed to create PR:", err);
+      setPrError(err?.message || "Failed to create pull request");
+      if (err?.installUrl) {
+        setInstallUrl(err.installUrl);
+      }
+    } finally {
+      setIsCreatingPr(false);
     }
   };
 
@@ -193,7 +217,55 @@ export function ChangesetView({ changeset, onStatusChange }: ChangesetViewProps)
             </Button>
           </div>
         )}
+
+        {currentChangeset.status === "approved" && (
+          <div className="flex items-center gap-2">
+            {currentChangeset.pullRequest ? (
+              <a
+                href={currentChangeset.pullRequest.prUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 h-7 px-3 rounded-md text-xs font-medium bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 transition-colors border border-emerald-500/30"
+              >
+                <GitPullRequest className="h-3.5 w-3.5" />
+                <span>PR #{currentChangeset.pullRequest.prNumber} Opened</span>
+                <ExternalLink className="h-3 w-3 opacity-70" />
+              </a>
+            ) : (
+              <Button
+                size="sm"
+                disabled={isCreatingPr}
+                onClick={handleCreatePr}
+                className="h-7 text-xs bg-[var(--accent)] hover:bg-[var(--accent)]/90 text-white"
+              >
+                {isCreatingPr ? (
+                  <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <GitPullRequest className="mr-1 h-3.5 w-3.5" />
+                )}
+                Create Pull Request
+              </Button>
+            )}
+          </div>
+        )}
       </div>
+
+      {prError && (
+        <div className="border-b border-rose-500/20 bg-rose-500/10 px-3 py-2 text-rose-400 text-xs flex items-center justify-between gap-2">
+          <span>{prError}</span>
+          {installUrl && (
+            <a
+              href={installUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 font-medium underline hover:text-rose-300"
+            >
+              Install GitHub App
+              <ExternalLink className="h-3 w-3" />
+            </a>
+          )}
+        </div>
+      )}
 
       {/* Test Result Panel */}
       {currentChangeset.testResult && (

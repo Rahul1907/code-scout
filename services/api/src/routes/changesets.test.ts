@@ -5,6 +5,8 @@ import { resetConfigCache } from "../lib/config.js";
 import { AUTH_COOKIE_NAME, signAuthToken } from "../middleware/auth.js";
 import { AgentRun } from "../models/agentRun.js";
 import { Changeset } from "../models/changeset.js";
+import { PullRequest } from "../models/pullRequest.js";
+import { Repo } from "../models/repo.js";
 
 describe("Changesets routes", () => {
   const userId = "507f1f77bcf86cd799439011";
@@ -122,6 +124,108 @@ describe("Changesets routes", () => {
       { runId },
       { $set: { status: "cancelled" } }
     );
+  });
+
+  it("POST /api/changesets/:id/pull-request returns 400 when GitHub App not installed", async () => {
+    const app = createApp();
+    const mockDoc = {
+      _id: changesetId,
+      runId,
+      repoId,
+      status: "approved",
+    };
+    vi.spyOn(Changeset, "findById").mockResolvedValueOnce(mockDoc as never);
+    vi.spyOn(PullRequest, "findOne").mockReturnValueOnce({
+      lean: async () => null,
+    } as never);
+    vi.spyOn(Repo, "findOne").mockResolvedValueOnce({
+      _id: repoId,
+      userId,
+      fullName: "octocat/hello-world",
+      githubInstallationId: null,
+    } as never);
+
+    const res = await request(app)
+      .post(`/api/changesets/${changesetId}/pull-request`)
+      .set("Cookie", [cookie]);
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain("GitHub App is not installed");
+    expect(res.body.installUrl).toBeTruthy();
+  });
+
+  it("POST /api/changesets/:id/pull-request opens PR when app installed", async () => {
+    const app = createApp();
+    const saveMock = vi.fn().mockResolvedValue(undefined);
+    const mockDoc = {
+      _id: changesetId,
+      runId,
+      repoId,
+      status: "pending_review",
+      save: saveMock,
+    };
+    vi.spyOn(Changeset, "findById").mockResolvedValueOnce(mockDoc as never);
+    vi.spyOn(PullRequest, "findOne").mockReturnValueOnce({
+      lean: async () => null,
+    } as never);
+    vi.spyOn(Repo, "findOne").mockResolvedValueOnce({
+      _id: repoId,
+      userId,
+      fullName: "octocat/hello-world",
+      owner: "octocat",
+      name: "hello-world",
+      defaultBranch: "main",
+      githubInstallationId: 12345,
+    } as never);
+
+    vi.spyOn(global, "fetch").mockImplementation(async (url: string | URL | Request) => {
+      const urlStr = url.toString();
+      if (urlStr.includes("/generate-pr")) {
+        return new Response(JSON.stringify({ title: "feat: update app", body: "## Summary" }), { status: 200 });
+      }
+      if (urlStr.includes("/commit-and-push")) {
+        return new Response(JSON.stringify({ committed: true }), { status: 200 });
+      }
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    });
+
+    const prCreatedMock = {
+      _id: "pr-1",
+      prNumber: 42,
+      prUrl: "https://github.com/octocat/hello-world/pull/42",
+      title: "feat: update app",
+    };
+    vi.spyOn(PullRequest, "create").mockResolvedValueOnce(prCreatedMock as never);
+    vi.spyOn(AgentRun, "updateOne").mockResolvedValueOnce({} as never);
+
+    const res = await request(app)
+      .post(`/api/changesets/${changesetId}/pull-request`)
+      .set("Cookie", [cookie]);
+
+    expect(res.status).toBe(201);
+    expect(res.body.pullRequest.prNumber).toBe(42);
+    expect(res.body.pullRequest.prUrl).toBe("https://github.com/octocat/hello-world/pull/42");
+    expect(saveMock).toHaveBeenCalled();
+  });
+
+  it("GET /api/changesets/:id/pull-request returns PR details", async () => {
+    const app = createApp();
+    vi.spyOn(PullRequest, "findOne").mockReturnValueOnce({
+      lean: async () => ({
+        _id: "pr-1",
+        changesetId,
+        runId,
+        prNumber: 15,
+        prUrl: "https://github.com/octocat/hello-world/pull/15",
+      }),
+    } as never);
+
+    const res = await request(app)
+      .get(`/api/changesets/${changesetId}/pull-request`)
+      .set("Cookie", [cookie]);
+
+    expect(res.status).toBe(200);
+    expect(res.body.pullRequest.prNumber).toBe(15);
   });
 });
 

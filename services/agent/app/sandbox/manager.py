@@ -4,6 +4,7 @@ import os
 import re
 import shutil
 import time
+from typing import Any
 
 from app.config import get_settings
 from app.sandbox.docker import DockerClient, parse_memory_bytes
@@ -269,3 +270,103 @@ class SandboxManager:
         """Stop sandbox container and remove worktree."""
         await self.stop_sandbox(run_id)
         await self.remove_worktree(repo_id, run_id, keep_branch=keep_branch)
+
+    async def commit_and_push(
+        self,
+        repo_id: str,
+        run_id: str,
+        commit_message: str,
+        remote_url: str | None = None,
+        branch_name: str | None = None,
+    ) -> dict[str, Any]:
+        """Commit worktree modifications and push to remote repository."""
+        worktree_path = self.get_worktree_path(repo_id, run_id)
+        if not os.path.exists(worktree_path):
+            raise FileNotFoundError(f"Worktree path does not exist for run {run_id}: {worktree_path}")
+
+        target_branch = branch_name or f"agent/{run_id}"
+
+        # 1. Stage all changes
+        add_proc = await asyncio.create_subprocess_exec(
+            "git",
+            "-C",
+            worktree_path,
+            "add",
+            "-A",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        await add_proc.communicate()
+
+        # 2. Check status and commit if needed
+        status_proc = await asyncio.create_subprocess_exec(
+            "git",
+            "-C",
+            worktree_path,
+            "status",
+            "--porcelain",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        s_out, _ = await status_proc.communicate()
+        has_changes = bool(s_out.strip())
+
+        if has_changes:
+            commit_proc = await asyncio.create_subprocess_exec(
+                "git",
+                "-C",
+                worktree_path,
+                "commit",
+                "-m",
+                commit_message,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            c_out, c_err = await commit_proc.communicate()
+            if commit_proc.returncode != 0:
+                logger.warning(
+                    "git commit error for run %s: %s",
+                    run_id,
+                    c_err.decode("utf-8", errors="replace"),
+                )
+
+        # 3. Retrieve HEAD commit SHA
+        rev_proc = await asyncio.create_subprocess_exec(
+            "git",
+            "-C",
+            worktree_path,
+            "rev-parse",
+            "HEAD",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        r_out, _ = await rev_proc.communicate()
+        commit_sha = r_out.decode("utf-8", errors="replace").strip()
+
+        # 4. Push to remote if specified
+        pushed = False
+        if remote_url:
+            push_proc = await asyncio.create_subprocess_exec(
+                "git",
+                "-C",
+                worktree_path,
+                "push",
+                "--force",
+                remote_url,
+                f"HEAD:refs/heads/{target_branch}",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            p_out, p_err = await push_proc.communicate()
+            if push_proc.returncode != 0:
+                err_msg = p_err.decode("utf-8", errors="replace")
+                logger.error("git push failed for run %s: %s", run_id, err_msg)
+                raise RuntimeError(f"Git push failed: {err_msg}")
+            pushed = True
+
+        return {
+            "committed": True,
+            "commitSha": commit_sha,
+            "branch": target_branch,
+            "pushed": pushed,
+        }

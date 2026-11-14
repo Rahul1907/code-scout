@@ -21,6 +21,11 @@ export interface IChangeset {
   testCommand?: string;
   testResult?: ITestResult;
   status: "pending_review" | "approved" | "rejected";
+  pullRequest?: {
+    prNumber: number;
+    prUrl: string;
+    title?: string;
+  };
   createdAt: Date;
   updatedAt: Date;
 }
@@ -61,6 +66,11 @@ const changesetSchema = new Schema<IChangeset>(
       enum: ["pending_review", "approved", "rejected"],
       default: "pending_review",
       index: true,
+    },
+    pullRequest: {
+      prNumber: { type: Number },
+      prUrl: { type: String },
+      title: { type: String },
     },
   },
   { timestamps: true }

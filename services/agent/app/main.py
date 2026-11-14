@@ -355,3 +355,60 @@ async def discard_run(run_id: str, payload: DiscardRunRequest) -> dict[str, Any]
         {"$set": {"status": "cancelled", "completedAt": datetime.now(UTC)}},
     )
     return {"status": "discarded", "runId": run_id}
+
+
+class GeneratePrRequest(BaseModel):
+    repoId: str
+    instruction: str
+
+
+@app.post(
+    "/internal/runs/{run_id}/generate-pr",
+    dependencies=[Depends(verify_internal_key)],
+)
+async def generate_pr(run_id: str, payload: GeneratePrRequest) -> dict[str, str]:
+    from app.agent.pr import generate_pr_content
+
+    db = get_db()
+    changeset = await asyncio.to_thread(db["changesets"].find_one, {"runId": run_id})
+    files = changeset.get("files", []) if changeset else []
+    test_result = changeset.get("testResult") if changeset else None
+    test_command = changeset.get("testCommand") if changeset else None
+
+    return await generate_pr_content(
+        instruction=payload.instruction,
+        files=files,
+        test_result=test_result,
+        test_command=test_command,
+        run_id=run_id,
+    )
+
+
+class CommitAndPushRequest(BaseModel):
+    repoId: str
+    commitMessage: str
+    remoteUrl: str | None = None
+    branchName: str | None = None
+
+
+@app.post(
+    "/internal/runs/{run_id}/commit-and-push",
+    dependencies=[Depends(verify_internal_key)],
+)
+async def commit_and_push(run_id: str, payload: CommitAndPushRequest) -> dict[str, Any]:
+    from app.sandbox import SandboxManager
+
+    sandbox_mgr = SandboxManager()
+    try:
+        result = await sandbox_mgr.commit_and_push(
+            repo_id=payload.repoId,
+            run_id=run_id,
+            commit_message=payload.commitMessage,
+            remote_url=payload.remoteUrl,
+            branch_name=payload.branchName,
+        )
+        return result
+    except Exception as exc:
+        logger.exception("commit_and_push failed for run %s", run_id)
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
