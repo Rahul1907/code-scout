@@ -93,6 +93,8 @@ def test_internal_ask_streams_sse_events() -> None:
     assert res.status_code == 200
     body = res.text
     assert "event: run_started" in body
+    assert "event: retrieval_debug" in body
+    assert "starlette/routing.py" in body
     assert "event: token" in body
     assert "event: citation" in body
     assert '"filePath": "starlette/routing.py"' in body

@@ -67,6 +67,17 @@ export interface Citation {
   endLine: number;
 }
 
+export interface RetrievedChunk {
+  chunkId?: string;
+  filePath: string;
+  startLine: number;
+  endLine: number;
+  score: number;
+  source: "vector" | "keyword" | "both" | "unknown";
+  symbolName?: string;
+  content?: string;
+}
+
 export interface ConversationItem {
   _id: string;
   userId: string;
@@ -82,12 +93,14 @@ export interface MessageItem {
   role: "user" | "assistant";
   content: string;
   citations: Citation[];
+  retrievedChunks?: RetrievedChunk[];
   runId?: string;
   createdAt: string;
 }
 
 export type SseEvent =
   | { type: "run_started"; data: { runId: string } }
+  | { type: "retrieval_debug"; data: { chunks: RetrievedChunk[] } }
   | { type: "token"; data: { text: string } }
   | { type: "citation"; data: Citation }
   | {

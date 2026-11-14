@@ -23,6 +23,17 @@ interface CitationPayload {
   endLine: number;
 }
 
+interface RetrievedChunkPayload {
+  chunkId?: string;
+  filePath: string;
+  startLine: number;
+  endLine: number;
+  score: number;
+  source: "vector" | "keyword" | "both" | "unknown";
+  symbolName?: string;
+  content?: string;
+}
+
 export function createConversationsRouter(): Router {
   const router = Router();
   router.use(requireAuth);
@@ -155,6 +166,7 @@ export function createConversationsRouter(): Router {
     let assistantText = "";
     const citations: CitationPayload[] = [];
     const seenCitations = new Set<string>();
+    const retrievedChunks: RetrievedChunkPayload[] = [];
 
     const parseSseBlock = (block: string): void => {
       let eventType = "";
@@ -185,6 +197,34 @@ export function createConversationsRouter(): Router {
               startLine: data.startLine,
               endLine: data.endLine,
             });
+          }
+        } else if (eventType === "retrieval_debug" && Array.isArray(data.chunks)) {
+          for (const item of data.chunks) {
+            if (
+              item &&
+              typeof item === "object" &&
+              typeof (item as Record<string, unknown>).filePath === "string" &&
+              typeof (item as Record<string, unknown>).startLine === "number" &&
+              typeof (item as Record<string, unknown>).endLine === "number"
+            ) {
+              const obj = item as Record<string, unknown>;
+              const rawSource = String(obj.source ?? "unknown");
+              const validSources = ["vector", "keyword", "both", "unknown"];
+              const source = (validSources.includes(rawSource)
+                ? rawSource
+                : "unknown") as RetrievedChunkPayload["source"];
+
+              retrievedChunks.push({
+                chunkId: typeof obj.chunkId === "string" ? obj.chunkId : undefined,
+                filePath: String(obj.filePath),
+                startLine: Number(obj.startLine),
+                endLine: Number(obj.endLine),
+                score: typeof obj.score === "number" ? obj.score : 0,
+                source,
+                symbolName: typeof obj.symbolName === "string" ? obj.symbolName : undefined,
+                content: typeof obj.content === "string" ? obj.content : undefined,
+              });
+            }
           }
         }
       } catch {
@@ -248,6 +288,7 @@ export function createConversationsRouter(): Router {
           role: "assistant",
           content: assistantText,
           citations,
+          retrievedChunks,
           runId,
         });
       }

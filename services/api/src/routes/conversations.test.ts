@@ -76,6 +76,7 @@ describe("Conversation and Q&A SSE proxy routes", () => {
 
     const ssePayload = [
       'event: run_started\ndata: {"runId":"r1"}\n\n',
+      'event: retrieval_debug\ndata: {"chunks":[{"filePath":"starlette/routing.py","startLine":10,"endLine":20,"score":0.95,"source":"both"}]}\n\n',
       'event: token\ndata: {"text":"Routing is in "}\n\n',
       'event: token\ndata: {"text":"[starlette/routing.py:10-20]."}\n\n',
       'event: citation\ndata: {"filePath":"starlette/routing.py","startLine":10,"endLine":20}\n\n',
@@ -102,6 +103,7 @@ describe("Conversation and Q&A SSE proxy routes", () => {
       .send({ content: "Where is routing handled?", mode: "ask" });
 
     expect(res.status).toBe(200);
+    expect(res.text).toContain("event: retrieval_debug");
     expect(res.text).toContain("event: citation");
     expect(res.text).toContain("starlette/routing.py");
 
@@ -118,6 +120,15 @@ describe("Conversation and Q&A SSE proxy routes", () => {
         role: "assistant",
         content: "Routing is in [starlette/routing.py:10-20].",
         citations: [{ filePath: "starlette/routing.py", startLine: 10, endLine: 20 }],
+        retrievedChunks: [
+          expect.objectContaining({
+            filePath: "starlette/routing.py",
+            startLine: 10,
+            endLine: 20,
+            score: 0.95,
+            source: "both",
+          }),
+        ],
       }),
     );
     expect(saveMock).toHaveBeenCalledTimes(1);

@@ -155,6 +155,21 @@ async def ask_repo(payload: AskRequest) -> StreamingResponse:
                 latency_ms=(time.perf_counter() - ret_started) * 1000.0,
             )
 
+            retrieved_chunk_payloads = [
+                {
+                    "chunkId": c.chunk_id,
+                    "filePath": c.file_path,
+                    "startLine": c.start_line,
+                    "endLine": c.end_line,
+                    "score": round(c.score, 4),
+                    "source": c.source,
+                    "symbolName": c.symbol_name,
+                    "content": c.content,
+                }
+                for c in chunks
+            ]
+            yield format_sse("retrieval_debug", {"chunks": retrieved_chunk_payloads})
+
             history = [{"role": m.role, "content": m.content} for m in payload.conversationHistory]
             messages = build_qa_messages(
                 question=payload.question,

@@ -9,6 +9,24 @@ const citationSchema = new Schema(
   { _id: false },
 );
 
+const retrievedChunkSchema = new Schema(
+  {
+    chunkId: { type: String, default: undefined },
+    filePath: { type: String, required: true },
+    startLine: { type: Number, required: true },
+    endLine: { type: Number, required: true },
+    score: { type: Number, required: true },
+    source: {
+      type: String,
+      enum: ["vector", "keyword", "both", "unknown"],
+      default: "unknown",
+    },
+    symbolName: { type: String, default: undefined },
+    content: { type: String, default: undefined },
+  },
+  { _id: false },
+);
+
 const messageSchema = new Schema(
   {
     conversationId: {
@@ -20,6 +38,7 @@ const messageSchema = new Schema(
     role: { type: String, enum: ["user", "assistant"], required: true },
     content: { type: String, required: true },
     citations: { type: [citationSchema], default: [] },
+    retrievedChunks: { type: [retrievedChunkSchema], default: [] },
     runId: { type: String, default: undefined },
   },
   { timestamps: true },

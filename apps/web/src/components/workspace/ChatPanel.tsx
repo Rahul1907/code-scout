@@ -1,10 +1,11 @@
 "use client";
 
-import { FileText, Loader2, MessageSquarePlus, Send } from "lucide-react";
+import { FileText, Loader2, MessageSquarePlus, Send, SlidersHorizontal } from "lucide-react";
 import { Fragment, useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { createConversation, listConversations, listMessages, streamMessage } from "@/lib/api";
-import type { Citation, ConversationItem, MessageItem, RepoStatus } from "@/lib/types";
+import type { Citation, ConversationItem, MessageItem, RepoStatus, RetrievedChunk } from "@/lib/types";
+import { RetrievalDebugView } from "./RetrievalDebugView";
 
 interface ChatPanelProps {
   repoId: string;
@@ -69,6 +70,8 @@ export function ChatPanel({ repoId, repoStatus, onSelectCitation }: ChatPanelPro
   const [isStreaming, setIsStreaming] = useState(false);
   const [loadingConv, setLoadingConv] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showDebugPanel, setShowDebugPanel] = useState(false);
+  const [streamingRetrievedChunks, setStreamingRetrievedChunks] = useState<RetrievedChunk[]>([]);
 
   const selectId = useId();
   const promptId = useId();
@@ -146,6 +149,7 @@ export function ChatPanel({ repoId, repoStatus, onSelectCitation }: ChatPanelPro
     setIsStreaming(true);
     setStreamingText("");
     setStreamingCitations([]);
+    setStreamingRetrievedChunks([]);
 
     const optimisticUserMsg: MessageItem = {
       _id: `tmp-user-${Date.now()}`,
@@ -165,6 +169,8 @@ export function ChatPanel({ repoId, repoStatus, onSelectCitation }: ChatPanelPro
         if (evt.type === "token") {
           finalContent += evt.data.text;
           setStreamingText(finalContent);
+        } else if (evt.type === "retrieval_debug") {
+          setStreamingRetrievedChunks(evt.data.chunks);
         } else if (evt.type === "citation") {
           const cit = evt.data;
           const dup = collectedCitations.some(
@@ -191,6 +197,7 @@ export function ChatPanel({ repoId, repoStatus, onSelectCitation }: ChatPanelPro
     } finally {
       setStreamingText("");
       setStreamingCitations([]);
+      setStreamingRetrievedChunks([]);
       setIsStreaming(false);
     }
   };
@@ -229,15 +236,28 @@ export function ChatPanel({ repoId, repoStatus, onSelectCitation }: ChatPanelPro
           </select>
         </div>
 
-        <Button
-          size="sm"
-          variant="secondary"
-          disabled={isStreaming}
-          onClick={() => void handleNewConversation()}
-        >
-          <MessageSquarePlus className="h-3.5 w-3.5" aria-hidden="true" />
-          <span>New chat</span>
-        </Button>
+        <div className="flex items-center gap-1.5">
+          <Button
+            size="sm"
+            variant={showDebugPanel ? "primary" : "secondary"}
+            onClick={() => setShowDebugPanel((prev) => !prev)}
+            aria-pressed={showDebugPanel}
+            title="Toggle retrieval debug inspection across all answers"
+          >
+            <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden="true" />
+            <span>{showDebugPanel ? "Debug: on" : "Debug retrieval"}</span>
+          </Button>
+
+          <Button
+            size="sm"
+            variant="secondary"
+            disabled={isStreaming}
+            onClick={() => void handleNewConversation()}
+          >
+            <MessageSquarePlus className="h-3.5 w-3.5" aria-hidden="true" />
+            <span>New chat</span>
+          </Button>
+        </div>
       </div>
 
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
@@ -288,6 +308,14 @@ export function ChatPanel({ repoId, repoStatus, onSelectCitation }: ChatPanelPro
                   ))}
                 </div>
               )}
+
+              {msg.role === "assistant" && (msg.retrievedChunks?.length ?? 0) > 0 && (
+                <RetrievalDebugView
+                  chunks={msg.retrievedChunks!}
+                  defaultOpen={showDebugPanel}
+                  onSelectCitation={onSelectCitation}
+                />
+              )}
             </article>
           ))
         )}
@@ -325,6 +353,14 @@ export function ChatPanel({ repoId, repoStatus, onSelectCitation }: ChatPanelPro
                   </button>
                 ))}
               </div>
+            )}
+
+            {streamingRetrievedChunks.length > 0 && (
+              <RetrievalDebugView
+                chunks={streamingRetrievedChunks}
+                defaultOpen={showDebugPanel || true}
+                onSelectCitation={onSelectCitation}
+              />
             )}
           </article>
         )}
