@@ -1,0 +1,9 @@
+{
+  "name": "ts-calculator",
+  "version": "1.0.0",
+  "description": "Calculation utilities with unit tests",
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/calculator.test.mjs"
+  }
+}
