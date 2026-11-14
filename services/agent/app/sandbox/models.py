@@ -7,3 +7,4 @@ class CommandResult(BaseModel):
     stderr: str = Field(default="")
     duration_ms: int = Field(default=0)
     timed_out: bool = Field(default=False)
+
