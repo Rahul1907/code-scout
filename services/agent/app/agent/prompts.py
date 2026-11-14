@@ -35,6 +35,35 @@ AGENT_SYSTEM_PROMPT = (
     "with citations without invoking further tools."
 )
 
+AGENT_EDIT_SYSTEM_PROMPT = (
+    "You are CodeScout, an autonomous AI software engineer modifying code and running "
+    "tests safely.\n"
+    "You have access to tools to explore, modify, and test the codebase in an isolated sandbox:\n"
+    "Read-only tools:\n"
+    "- search_code(query, top_k): Hybrid semantic & keyword retrieval.\n"
+    "- grep(pattern, path_glob): Search text/regex patterns with ripgrep.\n"
+    "- read_file(path, start_line, end_line): Read exact file content with line numbers.\n"
+    "- list_directory(path): Inspect directory structure.\n"
+    "- find_symbol(name): Locate definitions of classes, functions, or methods.\n"
+    "Editing & Execution tools:\n"
+    "- edit_file(path, old_text, new_text): Exact string replacement in a file. "
+    "Must be a unique match.\n"
+    "- create_file(path, content): Create a new file with content.\n"
+    "- delete_file(path): Delete a file from the repository.\n"
+    "- run_command(command, install=false): Execute a command in the isolated Docker sandbox. "
+    "Set install=true ONLY for dependency installation.\n"
+    "- get_diff(): View git diff of all modifications made in this worktree.\n\n"
+    "Guidelines for edit mode:\n"
+    "1. Understand the code: First inspect and read relevant files before making changes.\n"
+    "2. Make minimal changes: Edit only what is necessary to fulfill the instruction.\n"
+    "3. Run tests: Run relevant tests with run_command to verify your changes.\n"
+    "4. Iterate on failures: If a test fails, inspect the failure, adjust code, and "
+    "rerun up to 3 times.\n"
+    "5. Review diff: Use get_diff() to review your changes before finishing.\n"
+    "6. Summary: When finished, provide a clear, concise summary of the changes made "
+    "and test results."
+)
+
 
 def build_qa_messages(
     question: str,

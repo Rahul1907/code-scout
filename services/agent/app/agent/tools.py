@@ -5,12 +5,16 @@ import json
 import logging
 import re
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
 
 from app.db.mongo import get_db
 from app.retrieval import RetrievalConfig, retrieve_chunks
+from app.sandbox.manager import DangerousCommandError
+
+if TYPE_CHECKING:
+    from app.sandbox.manager import SandboxManager
 
 logger = logging.getLogger(__name__)
 
@@ -109,6 +113,56 @@ class FindSymbolInput(BaseModel):
         ...,
         description="Symbol name to find (class, function, or method name).",
     )
+
+
+class EditFileInput(BaseModel):
+    path: str = Field(
+        ...,
+        description="Relative path of the file to modify.",
+    )
+    old_text: str = Field(
+        ...,
+        description="Exact string in the file to be replaced. Must match uniquely.",
+    )
+    new_text: str = Field(
+        ...,
+        description="Replacement text to insert in place of old_text.",
+    )
+
+
+class CreateFileInput(BaseModel):
+    path: str = Field(
+        ...,
+        description="Relative path of the file to create.",
+    )
+    content: str = Field(
+        ...,
+        description="Full text content to write into the new file.",
+    )
+
+
+class DeleteFileInput(BaseModel):
+    path: str = Field(
+        ...,
+        description="Relative path of the file to delete.",
+    )
+
+
+class RunCommandInput(BaseModel):
+    command: str = Field(
+        ...,
+        description="Shell command to run inside the isolated Docker sandbox environment.",
+    )
+    install: bool = Field(
+        default=False,
+        description=(
+            "Set to true ONLY if installing dependencies requiring external network access."
+        ),
+    )
+
+
+class GetDiffInput(BaseModel):
+    pass
 
 
 async def execute_search_code(
@@ -360,6 +414,174 @@ async def execute_find_symbol(
     return "\n".join(results)
 
 
+async def execute_edit_file(
+    repo_dir: Path,
+    args: EditFileInput,
+) -> str:
+    """Exact string replacement in a file."""
+    try:
+        target_path = sanitize_and_resolve_path(repo_dir, args.path)
+    except PathSecurityError as e:
+        return f"Error: {e}"
+
+    if not target_path.exists() or not target_path.is_file():
+        return f"Error: File '{args.path}' does not exist or is not a file."
+
+    try:
+        content = target_path.read_text(encoding="utf-8", errors="replace")
+    except Exception as e:
+        return f"Error reading file '{args.path}': {e}"
+
+    match_count = content.count(args.old_text)
+    if match_count == 0:
+        return (
+            f"Error: old_text not found in '{args.path}'. "
+            "Ensure the string matches exactly, including indentation, punctuation, and newlines."
+        )
+    if match_count > 1:
+        return (
+            f"Error: old_text found {match_count} times in '{args.path}'. "
+            "Replacement must be uniquely identified. Provide more surrounding context."
+        )
+
+    new_content = content.replace(args.old_text, args.new_text, 1)
+    try:
+        target_path.write_text(new_content, encoding="utf-8")
+    except Exception as e:
+        return f"Error writing file '{args.path}': {e}"
+
+    return f"Successfully updated '{args.path}'."
+
+
+async def execute_create_file(
+    repo_dir: Path,
+    args: CreateFileInput,
+) -> str:
+    """Create a new file in the repository worktree."""
+    try:
+        target_path = sanitize_and_resolve_path(repo_dir, args.path)
+    except PathSecurityError as e:
+        return f"Error: {e}"
+
+    try:
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        target_path.write_text(args.content, encoding="utf-8")
+    except Exception as e:
+        return f"Error creating file '{args.path}': {e}"
+
+    line_count = len(args.content.splitlines())
+    return f"Successfully created '{args.path}' ({line_count} lines)."
+
+
+async def execute_delete_file(
+    repo_dir: Path,
+    args: DeleteFileInput,
+) -> str:
+    """Delete a file from the repository worktree."""
+    try:
+        target_path = sanitize_and_resolve_path(repo_dir, args.path)
+    except PathSecurityError as e:
+        return f"Error: {e}"
+
+    if not target_path.exists():
+        return f"Error: File '{args.path}' does not exist."
+    if not target_path.is_file():
+        return f"Error: '{args.path}' is not a regular file."
+
+    try:
+        target_path.unlink()
+    except Exception as e:
+        return f"Error deleting file '{args.path}': {e}"
+
+    return f"Successfully deleted '{args.path}'."
+
+
+async def execute_run_command(
+    sandbox_manager: SandboxManager | None,
+    repo_id: str,
+    run_id: str | None,
+    args: RunCommandInput,
+) -> str:
+    """Run shell command in isolated sandbox."""
+    if not sandbox_manager or not run_id:
+        return "Error: Sandboxed execution is only available in edit runs."
+
+    try:
+        res = await sandbox_manager.run_command(
+            repo_id=repo_id,
+            run_id=run_id,
+            command=args.command,
+            install=args.install,
+        )
+    except DangerousCommandError as e:
+        return f"Security Error: {e}"
+    except Exception as e:
+        return f"Error running command: {e}"
+
+    output_lines = [
+        f"Exit code: {res.exit_code}",
+        f"Duration: {res.duration_ms}ms",
+    ]
+    if res.timed_out:
+        output_lines.append("[Command timed out]")
+    if res.stdout:
+        output_lines.append(f"[stdout]\n{res.stdout.strip()}")
+    if res.stderr:
+        output_lines.append(f"[stderr]\n{res.stderr.strip()}")
+
+    return "\n".join(output_lines)
+
+
+async def execute_get_diff(
+    repo_dir: Path,
+) -> str:
+    """Get unified git diff of worktree changes."""
+    # First, stage untracked files as intent-to-add so git diff includes them
+    try:
+        add_proc = await asyncio.create_subprocess_exec(
+            "git",
+            "-C",
+            str(repo_dir),
+            "add",
+            "-N",
+            ".",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        await add_proc.communicate()
+    except Exception:
+        pass
+
+    proc = await asyncio.create_subprocess_exec(
+        "git",
+        "-C",
+        str(repo_dir),
+        "diff",
+        "HEAD",
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    stdout, stderr = await proc.communicate()
+    if proc.returncode != 0:
+        # Fallback without HEAD
+        proc2 = await asyncio.create_subprocess_exec(
+            "git",
+            "-C",
+            str(repo_dir),
+            "diff",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout2, stderr2 = await proc2.communicate()
+        diff_text = stdout2.decode("utf-8", errors="replace").strip()
+    else:
+        diff_text = stdout.decode("utf-8", errors="replace").strip()
+
+    if not diff_text:
+        return "No changes made to the worktree yet."
+    return diff_text
+
+
 READ_ONLY_TOOLS: list[dict[str, Any]] = [
     {
         "type": "function",
@@ -417,12 +639,65 @@ READ_ONLY_TOOLS: list[dict[str, Any]] = [
     },
 ]
 
+WRITE_TOOLS: list[dict[str, Any]] = [
+    {
+        "type": "function",
+        "function": {
+            "name": "edit_file",
+            "description": (
+                "Make an exact string replacement in a file. Fails if old_text is not found "
+                "or occurs multiple times."
+            ),
+            "parameters": EditFileInput.model_json_schema(),
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "create_file",
+            "description": "Create a new file in the repository worktree with the given content.",
+            "parameters": CreateFileInput.model_json_schema(),
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "delete_file",
+            "description": "Delete a file from the repository worktree.",
+            "parameters": DeleteFileInput.model_json_schema(),
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "run_command",
+            "description": (
+                "Run a shell command inside an isolated Docker sandbox container. "
+                "Network is disabled by default. Set install=true ONLY for dependency installation."
+            ),
+            "parameters": RunCommandInput.model_json_schema(),
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_diff",
+            "description": "Get git diff of all modifications made in this worktree so far.",
+            "parameters": GetDiffInput.model_json_schema(),
+        },
+    },
+]
+
+ALL_TOOLS: list[dict[str, Any]] = READ_ONLY_TOOLS + WRITE_TOOLS
+
 
 async def execute_tool(
     tool_name: str,
     arguments: dict[str, Any] | str,
     repo_id: str,
     repo_dir: Path,
+    run_id: str | None = None,
+    sandbox_manager: SandboxManager | None = None,
 ) -> str:
     """Validate arguments and dispatch tool execution, returning a safe string result."""
     try:
@@ -448,6 +723,25 @@ async def execute_tool(
         elif tool_name == "find_symbol":
             inp = FindSymbolInput.model_validate(parsed_args)
             return await execute_find_symbol(repo_id=repo_id, args=inp)
+        elif tool_name == "edit_file":
+            inp = EditFileInput.model_validate(parsed_args)
+            return await execute_edit_file(repo_dir=repo_dir, args=inp)
+        elif tool_name == "create_file":
+            inp = CreateFileInput.model_validate(parsed_args)
+            return await execute_create_file(repo_dir=repo_dir, args=inp)
+        elif tool_name == "delete_file":
+            inp = DeleteFileInput.model_validate(parsed_args)
+            return await execute_delete_file(repo_dir=repo_dir, args=inp)
+        elif tool_name == "run_command":
+            inp = RunCommandInput.model_validate(parsed_args)
+            return await execute_run_command(
+                sandbox_manager=sandbox_manager,
+                repo_id=repo_id,
+                run_id=run_id,
+                args=inp,
+            )
+        elif tool_name == "get_diff":
+            return await execute_get_diff(repo_dir=repo_dir)
         else:
             return f"Error: Unknown tool '{tool_name}'."
     except Exception as exc:
