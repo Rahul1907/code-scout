@@ -93,7 +93,7 @@ async def index_repository(
                 vectors = embed_res.embeddings
             except Exception as exc:
                 logger.warning(
-                    "Batch embedding failed at %d:%d (%s); sub-dividing batch",
+                    "Batch embedding failed at %d:%d (%s); falling back to individual chunks",
                     start_idx,
                     start_idx + len(batch),
                     exc,
