@@ -118,3 +118,4 @@ export function AgentTimeline({ steps, isLive = false, defaultOpen = false }: Ag
     </details>
   );
 }
+

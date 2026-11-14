@@ -252,3 +252,4 @@ async def test_agent_loop_fallback_json_action() -> None:
     assert '"toolName": "list_directory"' in combined
     assert "event: tool_result" in combined
     assert "event: run_completed" in combined
+

@@ -193,3 +193,4 @@ async def test_execute_tool_dispatch(tmp_path: Path) -> None:
         repo_dir=repo_dir,
     )
     assert "Tool arguments must be valid JSON" in bad_json
+

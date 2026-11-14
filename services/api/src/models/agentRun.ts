@@ -50,3 +50,4 @@ export type AgentRunFields = InferSchemaType<typeof agentRunSchema>;
 export const AgentRun: Model<AgentRunFields> =
   (mongoose.models.AgentRun as Model<AgentRunFields> | undefined) ??
   mongoose.model<AgentRunFields>("AgentRun", agentRunSchema);
+

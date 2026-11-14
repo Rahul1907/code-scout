@@ -21,3 +21,4 @@ def estimate_cost(
     cost_in = (tokens_in / 1_000_000.0) * pricing["prompt"]
     cost_out = (tokens_out / 1_000_000.0) * pricing["completion"]
     return round(cost_in + cost_out, 6)
+
