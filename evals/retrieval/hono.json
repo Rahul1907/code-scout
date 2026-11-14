@@ -1,0 +1,109 @@
+{
+  "repo": "honojs/hono",
+  "style": "typescript",
+  "commitSha": "f6fbaf0299c48eea9e656e03e2ffe7ac755e8823",
+  "cloneUrl": "https://github.com/honojs/hono.git",
+  "questions": [
+    {
+      "id": "hono-1",
+      "question": "Where is the core Hono application class defined and instantiated?",
+      "expectedFiles": ["src/hono.ts", "src/hono-base.ts"]
+    },
+    {
+      "id": "hono-2",
+      "question": "Where is the Context class implemented and how does it provide c.json, c.text, and c.req?",
+      "expectedFiles": ["src/context.ts"]
+    },
+    {
+      "id": "hono-3",
+      "question": "Where is the compose function implemented for executing onion-style middleware chains?",
+      "expectedFiles": ["src/compose.ts"]
+    },
+    {
+      "id": "hono-4",
+      "question": "Where is the RegExpRouter implemented for compiling route paths into regular expressions?",
+      "expectedFiles": ["src/router/reg-exp-router/router.ts"]
+    },
+    {
+      "id": "hono-5",
+      "question": "Where is the TrieRouter implemented for prefix-tree route matching?",
+      "expectedFiles": ["src/router/trie-router/router.ts"]
+    },
+    {
+      "id": "hono-6",
+      "question": "Where is SmartRouter implemented to dynamically choose between routing algorithms?",
+      "expectedFiles": ["src/router/smart-router/router.ts"]
+    },
+    {
+      "id": "hono-7",
+      "question": "Where is LinearRouter implemented for simple sequential route scanning?",
+      "expectedFiles": ["src/router/linear-router/router.ts"]
+    },
+    {
+      "id": "hono-8",
+      "question": "Where is HTTPException defined and how are custom HTTP error responses handled?",
+      "expectedFiles": ["src/http-exception.ts"]
+    },
+    {
+      "id": "hono-9",
+      "question": "Where is CORS middleware implemented and how are Access-Control-Allow-Origin headers configured?",
+      "expectedFiles": ["src/middleware/cors/index.ts"]
+    },
+    {
+      "id": "hono-10",
+      "question": "Where is bearerAuth middleware implemented to validate authorization bearer tokens?",
+      "expectedFiles": ["src/middleware/bearer-auth/index.ts"]
+    },
+    {
+      "id": "hono-11",
+      "question": "Where is basicAuth middleware implemented to parse HTTP Basic Authentication headers?",
+      "expectedFiles": ["src/middleware/basic-auth/index.ts"]
+    },
+    {
+      "id": "hono-12",
+      "question": "Where is JWT middleware implemented to verify JSON Web Tokens and set payload into context?",
+      "expectedFiles": ["src/middleware/jwt/index.ts", "src/middleware/jwt/jwt.ts"]
+    },
+    {
+      "id": "hono-13",
+      "question": "Where is the logger middleware implemented to log request method, path, and response status?",
+      "expectedFiles": ["src/middleware/logger/index.ts"]
+    },
+    {
+      "id": "hono-14",
+      "question": "Where is CSRF protection middleware implemented to prevent cross-site request forgery?",
+      "expectedFiles": ["src/middleware/csrf/index.ts"]
+    },
+    {
+      "id": "hono-15",
+      "question": "Where is ETag middleware implemented to compute entity tags and handle 304 Not Modified responses?",
+      "expectedFiles": ["src/middleware/etag/index.ts"]
+    },
+    {
+      "id": "hono-16",
+      "question": "Where is serveStatic middleware implemented for serving static assets?",
+      "expectedFiles": ["src/middleware/serve-static/index.ts"]
+    },
+    {
+      "id": "hono-17",
+      "question": "Where is streamSSE helper implemented for server-sent event streaming?",
+      "expectedFiles": ["src/helper/streaming/sse.ts"]
+    },
+    {
+      "id": "hono-18",
+      "question": "Where are cookie helper functions getCookie, setCookie, and deleteCookie implemented?",
+      "expectedFiles": ["src/helper/cookie/index.ts", "src/utils/cookie.ts"]
+    },
+    {
+      "id": "hono-19",
+      "question": "Where is the validator middleware implemented for validating query, header, param, and JSON bodies?",
+      "expectedFiles": ["src/validator/validator.ts", "src/validator/index.ts"]
+    },
+    {
+      "id": "hono-20",
+      "question": "Where is HonoRequest implemented wrapping the standard web Fetch Request?",
+      "expectedFiles": ["src/request.ts"]
+    }
+  ]
+}
+

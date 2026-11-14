@@ -69,3 +69,4 @@ async def test_rerank_chunks_falls_back_on_error() -> None:
 @pytest.mark.asyncio
 async def test_rerank_chunks_empty() -> None:
     assert await rerank_chunks("query", []) == []
+

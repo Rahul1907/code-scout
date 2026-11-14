@@ -115,3 +115,4 @@ async def test_keyword_search_handles_missing_repo() -> None:
         mock_settings.return_value.repos_dir = "/nonexistent/path"
         results = await keyword_search("fake-repo", "Router")
         assert results == []
+

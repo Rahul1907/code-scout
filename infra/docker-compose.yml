@@ -35,6 +35,7 @@ services:
     volumes:
       - ../services/agent:/app
       - /app/.venv
+      - ../evals:/app/evals
       - repos_data:/data/repos
     depends_on:
       mongo:

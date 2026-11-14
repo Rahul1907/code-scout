@@ -84,3 +84,4 @@ async def hybrid_search(
         k=fusion_k,
         top_k=top_k,
     )
+

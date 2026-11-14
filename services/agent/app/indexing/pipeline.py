@@ -87,10 +87,39 @@ async def index_repository(
         for start_idx in range(0, total_chunks, batch_size):
             batch = all_chunks[start_idx : start_idx + batch_size]
             texts = [format_chunk_for_embedding(chunk) for _, chunk in batch]
-            embed_res = await llm.embed(texts, input_type="passage")
+
+            try:
+                embed_res = await llm.embed(texts, input_type="passage")
+                vectors = embed_res.embeddings
+            except Exception as exc:
+                logger.warning(
+                    "Batch embedding failed at %d:%d (%s); sub-dividing batch",
+                    start_idx,
+                    start_idx + len(batch),
+                    exc,
+                )
+                fallback_vec = [0.0] * settings.embedding_dimensions
+
+                async def _embed_safe(
+                    sub_texts: list[str],
+                    zero_vec: list[float] = fallback_vec,
+                ) -> list[list[float]]:
+                    try:
+                        res = await llm.embed(sub_texts, input_type="passage")
+                        return res.embeddings
+                    except Exception as sub_exc:
+                        if len(sub_texts) == 1:
+                            logger.warning("Flagged or unprocessable single chunk: %s", sub_exc)
+                            return [zero_vec]
+                        mid = len(sub_texts) // 2
+                        left = await _embed_safe(sub_texts[:mid], zero_vec)
+                        right = await _embed_safe(sub_texts[mid:], zero_vec)
+                        return left + right
+
+                vectors = await _embed_safe(texts)
 
             docs = []
-            for (_, chunk), vector in zip(batch, embed_res.embeddings, strict=True):
+            for (_, chunk), vector in zip(batch, vectors, strict=True):
                 docs.append(
                     {
                         "repoId": repo_id,

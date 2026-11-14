@@ -1,0 +1,109 @@
+{
+  "repo": "encode/starlette",
+  "style": "python",
+  "commitSha": "271c277da0ff64e2048a4d46ecc812b9d61db5f6",
+  "cloneUrl": "https://github.com/encode/starlette.git",
+  "questions": [
+    {
+      "id": "starlette-1",
+      "question": "Where is the Router class defined and how does it dispatch incoming requests?",
+      "expectedFiles": ["starlette/routing.py"]
+    },
+    {
+      "id": "starlette-2",
+      "question": "Where is the main Starlette application class initialized and configured?",
+      "expectedFiles": ["starlette/applications.py"]
+    },
+    {
+      "id": "starlette-3",
+      "question": "How is BaseHTTPMiddleware implemented and how does it wrap the call_next handler?",
+      "expectedFiles": ["starlette/middleware/base.py"]
+    },
+    {
+      "id": "starlette-4",
+      "question": "Where is the Request object defined and how are request headers and query parameters parsed?",
+      "expectedFiles": ["starlette/requests.py"]
+    },
+    {
+      "id": "starlette-5",
+      "question": "Where is JSONResponse and StreamingResponse implemented?",
+      "expectedFiles": ["starlette/responses.py"]
+    },
+    {
+      "id": "starlette-6",
+      "question": "Where is the HTTPException class defined and how does it store status codes and details?",
+      "expectedFiles": ["starlette/exceptions.py"]
+    },
+    {
+      "id": "starlette-7",
+      "question": "Where is CORS middleware implemented and how are preflight OPTIONS requests handled?",
+      "expectedFiles": ["starlette/middleware/cors.py"]
+    },
+    {
+      "id": "starlette-8",
+      "question": "Where is SessionMiddleware implemented and how are signed cookie sessions parsed?",
+      "expectedFiles": ["starlette/middleware/sessions.py"]
+    },
+    {
+      "id": "starlette-9",
+      "question": "Where is GZipMiddleware implemented to compress outgoing HTTP response streams?",
+      "expectedFiles": ["starlette/middleware/gzip.py"]
+    },
+    {
+      "id": "starlette-10",
+      "question": "Where is TrustedHostMiddleware defined and how does it validate host headers against allowed hosts?",
+      "expectedFiles": ["starlette/middleware/trustedhost.py"]
+    },
+    {
+      "id": "starlette-11",
+      "question": "Where is HTTPSRedirectMiddleware implemented to redirect HTTP requests to HTTPS?",
+      "expectedFiles": ["starlette/middleware/httpsredirect.py"]
+    },
+    {
+      "id": "starlette-12",
+      "question": "Where is the WebSocket class defined and how does it handle accept, send_text, and receive_text?",
+      "expectedFiles": ["starlette/websockets.py"]
+    },
+    {
+      "id": "starlette-13",
+      "question": "Where is StaticFiles implemented and how does it serve static directories and files?",
+      "expectedFiles": ["starlette/staticfiles.py"]
+    },
+    {
+      "id": "starlette-14",
+      "question": "Where is Jinja2Templates defined and how does it render HTML templates?",
+      "expectedFiles": ["starlette/templating.py"]
+    },
+    {
+      "id": "starlette-15",
+      "question": "Where is BackgroundTasks implemented and how are background tasks scheduled to execute after a response?",
+      "expectedFiles": ["starlette/background.py"]
+    },
+    {
+      "id": "starlette-16",
+      "question": "Where is AuthenticationBackend and AuthenticationError defined for user authentication?",
+      "expectedFiles": ["starlette/authentication.py"]
+    },
+    {
+      "id": "starlette-17",
+      "question": "Where is ServerErrorMiddleware implemented to catch unhandled exceptions and render 500 pages?",
+      "expectedFiles": ["starlette/middleware/errors.py"]
+    },
+    {
+      "id": "starlette-18",
+      "question": "Where are data structures like Headers, QueryParams, and State implemented?",
+      "expectedFiles": ["starlette/datastructures.py"]
+    },
+    {
+      "id": "starlette-19",
+      "question": "Where is WSGIMiddleware implemented to adapt legacy WSGI applications to ASGI?",
+      "expectedFiles": ["starlette/middleware/wsgi.py"]
+    },
+    {
+      "id": "starlette-20",
+      "question": "Where are standard HTTP status code constants defined?",
+      "expectedFiles": ["starlette/status.py"]
+    }
+  ]
+}
+

@@ -88,3 +88,4 @@ async def test_hybrid_search_runs_concurrently() -> None:
     assert p_kw.called
     assert len(results) == 2
     assert {r.chunk_id for r in results} == {"vec-1", "kw-1"}
+

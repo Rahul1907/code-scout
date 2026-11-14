@@ -1,0 +1,109 @@
+{
+  "repo": "pmndrs/zustand",
+  "style": "react",
+  "commitSha": "9fed2eb2f3af672da9f7bf694b996df3831fc207",
+  "cloneUrl": "https://github.com/pmndrs/zustand.git",
+  "questions": [
+    {
+      "id": "zustand-1",
+      "question": "Where is the core vanilla createStore function implemented with getState, setState, and subscribe?",
+      "expectedFiles": ["src/vanilla.ts"]
+    },
+    {
+      "id": "zustand-2",
+      "question": "Where is the React useStore hook implemented using useSyncExternalStoreWithSelector?",
+      "expectedFiles": ["src/react.ts"]
+    },
+    {
+      "id": "zustand-3",
+      "question": "Where is persist middleware implemented to save state to localStorage or custom storage?",
+      "expectedFiles": ["src/middleware/persist.ts"]
+    },
+    {
+      "id": "zustand-4",
+      "question": "Where is devtools middleware implemented to connect the store to the Redux DevTools browser extension?",
+      "expectedFiles": ["src/middleware/devtools.ts"]
+    },
+    {
+      "id": "zustand-5",
+      "question": "Where is immer middleware implemented to allow mutating draft state using Immer produce?",
+      "expectedFiles": ["src/middleware/immer.ts"]
+    },
+    {
+      "id": "zustand-6",
+      "question": "Where is subscribeWithSelector middleware implemented to allow subscribing to specific slices of state?",
+      "expectedFiles": ["src/middleware/subscribeWithSelector.ts"]
+    },
+    {
+      "id": "zustand-7",
+      "question": "Where is the redux middleware implemented to wrap Redux-style reducers and action dispatching?",
+      "expectedFiles": ["src/middleware/redux.ts"]
+    },
+    {
+      "id": "zustand-8",
+      "question": "Where is the combine middleware implemented to merge initial state with state setter functions?",
+      "expectedFiles": ["src/middleware/combine.ts"]
+    },
+    {
+      "id": "zustand-9",
+      "question": "Where is the shallow equality function implemented to compare objects, arrays, and maps?",
+      "expectedFiles": ["src/vanilla/shallow.ts", "src/shallow.ts"]
+    },
+    {
+      "id": "zustand-10",
+      "question": "Where is the useShallow hook implemented for React component selector memoization?",
+      "expectedFiles": ["src/react/shallow.ts", "src/shallow.ts"]
+    },
+    {
+      "id": "zustand-11",
+      "question": "Where is createWithEqualityFn implemented in traditional.ts for custom equality functions?",
+      "expectedFiles": ["src/traditional.ts"]
+    },
+    {
+      "id": "zustand-12",
+      "question": "Where is the main entry point and default export create function defined?",
+      "expectedFiles": ["src/index.ts"]
+    },
+    {
+      "id": "zustand-13",
+      "question": "Where is the ssrSafe helper middleware implemented for server-side rendering safety?",
+      "expectedFiles": ["src/middleware/ssrSafe.ts"]
+    },
+    {
+      "id": "zustand-14",
+      "question": "How does setState handle partial state updates and replace flag in vanilla.ts?",
+      "expectedFiles": ["src/vanilla.ts"]
+    },
+    {
+      "id": "zustand-15",
+      "question": "How is storage rehydration and onRehydrateStorage callback handled in the persist middleware?",
+      "expectedFiles": ["src/middleware/persist.ts"]
+    },
+    {
+      "id": "zustand-16",
+      "question": "How are action names and connection names passed to window.__REDUX_DEVTOOLS_EXTENSION__ in devtools middleware?",
+      "expectedFiles": ["src/middleware/devtools.ts"]
+    },
+    {
+      "id": "zustand-17",
+      "question": "Where are StoreApi, StateCreator, and Mutate TypeScript types exported?",
+      "expectedFiles": ["src/vanilla.ts", "src/types.d.ts"]
+    },
+    {
+      "id": "zustand-18",
+      "question": "Where are common middleware re-exports grouped in the middleware barrel file?",
+      "expectedFiles": ["src/middleware.ts"]
+    },
+    {
+      "id": "zustand-19",
+      "question": "How does subscribe listener cleanup and unsubscribe callback work in createStore?",
+      "expectedFiles": ["src/vanilla.ts"]
+    },
+    {
+      "id": "zustand-20",
+      "question": "How does useStore handle store subscription and selector optimization in react.ts?",
+      "expectedFiles": ["src/react.ts"]
+    }
+  ]
+}
+
