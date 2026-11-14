@@ -6,7 +6,8 @@ import { Changeset } from "../models/changeset.js";
 
 export function createChangesetsRouter(): Router {
   const router = Router();
-  router.use(requireAuth);
+  router.use("/runs", requireAuth);
+  router.use("/changesets", requireAuth);
 
   // GET /api/runs/:id/changeset
   router.get("/runs/:id/changeset", async (req: Request, res: Response) => {
