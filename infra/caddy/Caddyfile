@@ -1,0 +1,32 @@
+# CodeScout Caddyfile
+# Automatic HTTPS via Let's Encrypt / ZeroSSL for {$DOMAIN}
+
+{$DOMAIN:localhost} {
+    # Reverse proxy API requests to Node.js backend
+    # flush_interval -1 disables response buffering to guarantee real-time SSE streaming
+    handle /api/* {
+        reverse_proxy api:4000 {
+            flush_interval -1
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+
+    # Reverse proxy all web frontend requests to Next.js standalone runner
+    handle {
+        reverse_proxy web:3000 {
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+
+    # Structured JSON access logs for operations & monitoring
+    log {
+        output stdout
+        format json
+    }
+}

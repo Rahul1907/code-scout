@@ -82,6 +82,7 @@ export function createGitHubAppRouter(): Router {
   router.get("/repos/:id/github", requireAuth, async (req: Request, res: Response) => {
     const auth = (req as AuthenticatedRequest).auth!;
     const repoId = String(req.params.id ?? "");
+    const config = getConfig();
 
     if (!mongoose.isValidObjectId(repoId)) {
       res.status(400).json({ error: "Invalid repository id" });

@@ -33,8 +33,8 @@ export function createEvalsRouter(): Router {
   // GET /api/evals/:id
   router.get("/evals/:id", async (req: Request, res: Response) => {
     try {
-      const { id } = req.params;
-      if (!mongoose.Types.ObjectId.isValid(id)) {
+      const id = String(req.params.id ?? "");
+      if (!id || !mongoose.Types.ObjectId.isValid(id)) {
         res.status(400).json({ error: "Invalid eval run ID" });
         return;
       }
