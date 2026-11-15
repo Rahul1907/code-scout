@@ -1,6 +1,8 @@
 import asyncio
 from unittest.mock import AsyncMock, patch
+
 import pytest
+
 from app.agent.pr import generate_pr_content
 
 
@@ -41,7 +43,10 @@ async def test_generate_pr_content_llm_success():
     with patch("app.agent.pr.get_llm_client") as mock_get_llm:
         mock_llm = AsyncMock()
         mock_resp = AsyncMock()
-        mock_resp.content = '{"title": "docs: document sandbox capabilities", "body": "## Summary\\nAdded sandbox docs"}'
+        mock_resp.content = (
+            '{"title": "docs: document sandbox capabilities", '
+            '"body": "## Summary\\nAdded sandbox docs"}'
+        )
         mock_llm.chat.return_value = mock_resp
         mock_get_llm.return_value = mock_llm
 

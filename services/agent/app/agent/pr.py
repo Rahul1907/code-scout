@@ -1,6 +1,7 @@
-from typing import Any
 import json
 import logging
+from typing import Any
+
 from app.llm import get_llm_client
 
 logger = logging.getLogger(__name__)
@@ -22,7 +23,10 @@ async def generate_pr_content(
     run_id: str | None = None,
 ) -> dict[str, str]:
     """Generate Pull Request title and body using LLM with fallback template."""
-    files_summary = ", ".join(f"{f.get('path')} ({f.get('changeType', 'modified')})" for f in files) or "None"
+    files_summary = (
+        ", ".join(f"{f.get('path')} ({f.get('changeType', 'modified')})" for f in files)
+        or "None"
+    )
     
     test_summary = "No tests executed"
     if test_result:
@@ -70,7 +74,10 @@ async def generate_pr_content(
         logger.warning("LLM PR generation failed, using fallback template: %s", exc)
 
     # Fallback template
-    file_bullets = "\n".join(f"- `{f.get('path')}` ({f.get('changeType', 'modified')})" for f in files) or "- None"
+    file_bullets = (
+        "\n".join(f"- `{f.get('path')}` ({f.get('changeType', 'modified')})" for f in files)
+        or "- None"
+    )
     title_snippet = instruction.replace("\n", " ").strip()
     if len(title_snippet) > 60:
         title_snippet = title_snippet[:57] + "..."
@@ -89,12 +96,15 @@ async def generate_pr_content(
         body_lines.append(f"- **Command**: `{test_command}`")
     if test_result:
         status_str = "Passed" if test_result.get("passed") else "Failed"
-        body_lines.append(f"- **Status**: {status_str} (Exit code: {test_result.get('exitCode', 0)})")
+        code_val = test_result.get("exitCode", 0)
+        body_lines.append(f"- **Status**: {status_str} (Exit code: {code_val})")
     else:
         body_lines.append("- No test suite was executed in the sandbox for this run.")
 
     if run_id:
-        body_lines.extend(["", "---", f"*Automated pull request created by CodeScout (Run ID: `{run_id}`)*"])
+        body_lines.extend(
+            ["", "---", f"*Automated pull request created by CodeScout (Run ID: `{run_id}`)*"]
+        )
 
     return {
         "title": fallback_title,

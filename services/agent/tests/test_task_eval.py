@@ -1,10 +1,7 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
 from evals.tasks.run_task_eval import (
     categorize_failure,
     load_tasks,

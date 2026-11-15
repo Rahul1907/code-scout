@@ -345,7 +345,9 @@ class SandboxManager:
         """Commit worktree modifications and push to remote repository."""
         worktree_path = self.get_worktree_path(repo_id, run_id)
         if not os.path.exists(worktree_path):
-            raise FileNotFoundError(f"Worktree path does not exist for run {run_id}: {worktree_path}")
+            raise FileNotFoundError(
+                f"Worktree path does not exist for run {run_id}: {worktree_path}"
+            )
 
         await self._ensure_worktree_valid(repo_id, run_id)
 

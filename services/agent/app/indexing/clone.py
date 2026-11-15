@@ -38,7 +38,9 @@ def clone_repository(
             if base_dir.exists():
                 shutil.rmtree(base_dir)
             fallback_cmd = ["git", "clone", "--depth", "1", clone_url, str(base_dir)]
-            fallback_proc = subprocess.run(fallback_cmd, capture_output=True, text=True, timeout=180)
+            fallback_proc = subprocess.run(
+                fallback_cmd, capture_output=True, text=True, timeout=180
+            )
             if fallback_proc.returncode == 0:
                 proc = fallback_proc
 
