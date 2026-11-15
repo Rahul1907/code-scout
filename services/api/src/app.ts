@@ -3,6 +3,7 @@ import cors from "cors";
 import express, { type Express, type Request, type Response } from "express";
 import helmet from "helmet";
 import { getConfig } from "./lib/config.js";
+import { requestLogger } from "./middleware/logger.js";
 import { rateLimiter } from "./middleware/rateLimiter.js";
 import { createAuthRouter } from "./routes/auth.js";
 import { createConversationsRouter } from "./routes/conversations.js";
@@ -11,12 +12,14 @@ import { createRunsRouter } from "./routes/runs.js";
 import { createChangesetsRouter } from "./routes/changesets.js";
 import { createGitHubAppRouter } from "./routes/githubApp.js";
 import { createEvalsRouter } from "./routes/evals.js";
+import { createStatusRouter } from "./routes/status.js";
 
 export function createApp(): Express {
   const app = express();
   const config = getConfig();
 
   app.set("trust proxy", 1);
+  app.use(requestLogger());
   app.use(helmet());
   app.use(
     cors({
@@ -44,6 +47,7 @@ export function createApp(): Express {
   app.use("/api", createChangesetsRouter());
   app.use("/api", createGitHubAppRouter());
   app.use("/api", createEvalsRouter());
+  app.use("/api", createStatusRouter());
 
   return app;
 }

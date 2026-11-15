@@ -13,6 +13,7 @@ import {
   INDEXING_QUEUE_NAME,
   type IndexRepoJobData,
 } from "../queues/indexing.js";
+import { runCleanup } from "./cleanup.js";
 
 async function startWorker(): Promise<void> {
   const config = getConfig();
@@ -113,7 +114,33 @@ async function startWorker(): Promise<void> {
     }),
   );
 
+  // Run initial maintenance cleanup and schedule periodic runs (every 1 hour)
+  void runCleanup().catch((err) => {
+    console.error(
+      JSON.stringify({
+        level: "error",
+        service: "worker",
+        msg: "Initial cleanup failed",
+        error: String(err),
+      }),
+    );
+  });
+
+  const cleanupInterval = setInterval(() => {
+    void runCleanup().catch((err) => {
+      console.error(
+        JSON.stringify({
+          level: "error",
+          service: "worker",
+          msg: "Scheduled cleanup failed",
+          error: String(err),
+        }),
+      );
+    });
+  }, 60 * 60 * 1000);
+
   async function shutdown(signal: string): Promise<void> {
+    clearInterval(cleanupInterval);
     console.log(JSON.stringify({ level: "info", service: "worker", msg: `Shutting down on ${signal}` }));
     await worker.close();
     await disconnectDb();

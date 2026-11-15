@@ -1,13 +1,15 @@
 import asyncio
 import hmac
+import json
 import logging
 import time
+import uuid
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime
 from typing import Any
 
 from bson import ObjectId
-from fastapi import Depends, FastAPI, Header, HTTPException, status
+from fastapi import Depends, FastAPI, Header, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
@@ -26,6 +28,7 @@ class HealthResponse(BaseModel):
     status: str
     service: str
     timestamp: str
+    llm: str = "available"
 
 
 class IndexRequest(BaseModel):
@@ -74,6 +77,43 @@ def verify_internal_key(x_internal_key: str | None = Header(default=None)) -> No
 
 
 app = FastAPI(title="CodeScout Agent Service", version="0.1.0")
+
+
+@app.middleware("http")
+async def request_logging_middleware(request: Request, call_next):
+    raw_req_id = request.headers.get("x-request-id")
+    request_id = raw_req_id if raw_req_id else str(uuid.uuid4())
+    start_time = time.perf_counter()
+    response = await call_next(request)
+    duration_ms = round((time.perf_counter() - start_time) * 1000, 2)
+    response.headers["X-Request-Id"] = request_id
+
+    # Omit logging high-frequency internal healthcheck successes
+    if request.url.path == "/internal/health" and response.status_code == 200:
+        return response
+
+    level = (
+        "error"
+        if response.status_code >= 500
+        else "warning"
+        if response.status_code >= 400
+        else "info"
+    )
+    getattr(logger, level)(
+        json.dumps(
+            {
+                "timestamp": datetime.now(UTC).isoformat(),
+                "level": level,
+                "service": "agent",
+                "requestId": request_id,
+                "method": request.method,
+                "url": str(request.url.path),
+                "statusCode": response.status_code,
+                "durationMs": duration_ms,
+            }
+        )
+    )
+    return response
 
 
 @app.get("/internal/health", response_model=HealthResponse)
