@@ -1,11 +1,9 @@
 import type {
   ChangesetItem,
   ConversationItem,
-  EvalRunItem,
   FileContentResponse,
   GitHubRepoItem,
   MessageItem,
-  PullRequestItem,
   RepoItem,
   SseEvent,
   TreeNode,
@@ -257,51 +255,4 @@ export async function rejectChangeset(changesetId: string): Promise<ChangesetIte
     { method: "POST" }
   );
   return data.changeset;
-}
-
-export async function createPullRequest(changesetId: string): Promise<{
-  pullRequest: PullRequestItem;
-  changeset: ChangesetItem;
-}> {
-  return await apiFetch<{ pullRequest: PullRequestItem; changeset: ChangesetItem }>(
-    `/api/changesets/${changesetId}/pull-request`,
-    { method: "POST" }
-  );
-}
-
-export async function getPullRequest(changesetId: string): Promise<PullRequestItem | null> {
-  try {
-    const data = await apiFetch<{ pullRequest: PullRequestItem }>(
-      `/api/changesets/${changesetId}/pull-request`
-    );
-    return data.pullRequest;
-  } catch (err) {
-    if (err instanceof ApiError && err.status === 404) {
-      return null;
-    }
-    throw err;
-  }
-}
-
-export async function getRepoGitHubStatus(repoId: string): Promise<{
-  installed: boolean;
-  installationId: number | null;
-  installUrl: string;
-}> {
-  return await apiFetch<{
-    installed: boolean;
-    installationId: number | null;
-    installUrl: string;
-  }>(`/api/repos/${repoId}/github`);
-}
-
-export async function listEvalRuns(suite?: "retrieval" | "task"): Promise<EvalRunItem[]> {
-  const url = suite ? `/api/evals?suite=${suite}` : "/api/evals";
-  const data = await apiFetch<{ evalRuns: EvalRunItem[] }>(url);
-  return data.evalRuns;
-}
-
-export async function getEvalRun(id: string): Promise<EvalRunItem> {
-  const data = await apiFetch<{ evalRun: EvalRunItem }>(`/api/evals/${id}`);
-  return data.evalRun;
 }

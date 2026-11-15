@@ -8,8 +8,6 @@ import { createConversationsRouter } from "./routes/conversations.js";
 import { createReposRouter } from "./routes/repos.js";
 import { createRunsRouter } from "./routes/runs.js";
 import { createChangesetsRouter } from "./routes/changesets.js";
-import { createGitHubAppRouter } from "./routes/githubApp.js";
-import { createEvalsRouter } from "./routes/evals.js";
 
 export function createApp(): Express {
   const app = express();
@@ -38,8 +36,6 @@ export function createApp(): Express {
   app.use("/api", createConversationsRouter());
   app.use("/api", createRunsRouter());
   app.use("/api", createChangesetsRouter());
-  app.use("/api", createGitHubAppRouter());
-  app.use("/api", createEvalsRouter());
 
   return app;
 }

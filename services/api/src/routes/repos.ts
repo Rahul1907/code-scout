@@ -100,8 +100,7 @@ async function getUserGitHubToken(userId: string): Promise<string | null> {
 
 export function createReposRouter(): Router {
   const router = Router();
-  router.use("/repos", requireAuth);
-  router.use("/github/repos", requireAuth);
+  router.use(requireAuth);
 
   router.get("/github/repos", async (req: Request, res: Response) => {
     const auth = (req as AuthenticatedRequest).auth!;

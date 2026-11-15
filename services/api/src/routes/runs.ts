@@ -5,7 +5,7 @@ import { AgentRun } from "../models/agentRun.js";
 
 export function createRunsRouter(): Router {
   const router = Router();
-  router.use("/runs", requireAuth);
+  router.use(requireAuth);
 
   router.post("/runs/:id/cancel", async (req: Request, res: Response) => {
     const runId = String(req.params.id ?? "");

@@ -160,21 +160,10 @@ export default function DashboardPage() {
     <div className="flex min-h-screen flex-col">
       <header className="border-b border-[var(--border)] bg-[var(--surface)]">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3.5">
-          <div className="flex items-center gap-6">
-            <Link href="/dashboard" className="flex items-center gap-2 text-lg font-semibold">
-              <FolderGit2 className="h-5 w-5 text-[var(--accent)]" aria-hidden="true" />
-              <span>CodeScout</span>
-            </Link>
-            <nav className="flex items-center gap-3 text-xs">
-              <Link href="/dashboard" className="font-semibold text-[var(--accent)]">
-                Dashboard
-              </Link>
-              <span className="text-[var(--border)]">/</span>
-              <Link href="/evals" className="text-[var(--muted)] hover:text-[var(--text)] transition-colors">
-                Evals
-              </Link>
-            </nav>
-          </div>
+          <Link href="/dashboard" className="flex items-center gap-2 text-lg font-semibold">
+            <FolderGit2 className="h-5 w-5 text-[var(--accent)]" aria-hidden="true" />
+            <span>CodeScout</span>
+          </Link>
 
           <div className="flex items-center gap-4">
             {user && (
