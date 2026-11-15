@@ -271,6 +271,52 @@ class SandboxManager:
         await self.stop_sandbox(run_id)
         await self.remove_worktree(repo_id, run_id, keep_branch=keep_branch)
 
+    async def _ensure_worktree_valid(self, repo_id: str, run_id: str) -> None:
+        """Ensure git worktree metadata is intact and valid relative to base repo."""
+        base_repo = self.get_base_repo_path(repo_id)
+        worktree_path = self.get_worktree_path(repo_id, run_id)
+        if not os.path.exists(worktree_path):
+            return
+
+        # Check if worktree git is functional
+        proc = await asyncio.create_subprocess_exec(
+            "git",
+            "-C",
+            worktree_path,
+            "status",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        await proc.communicate()
+        if proc.returncode != 0 and os.path.exists(base_repo):
+            logger.info("Repairing worktree metadata for run %s...", run_id)
+            meta_dir = os.path.join(base_repo, ".git", "worktrees", run_id)
+            os.makedirs(meta_dir, exist_ok=True)
+            with open(os.path.join(meta_dir, "gitdir"), "w", encoding="utf-8") as f:
+                f.write(os.path.join(worktree_path, ".git"))
+            with open(os.path.join(meta_dir, "commondir"), "w", encoding="utf-8") as f:
+                f.write("../..\n")
+            with open(os.path.join(meta_dir, "HEAD"), "w", encoding="utf-8") as f:
+                f.write(f"ref: refs/heads/agent/{run_id}\n")
+
+            git_file = os.path.join(worktree_path, ".git")
+            with open(git_file, "w", encoding="utf-8") as f:
+                f.write(f"gitdir: {meta_dir}\n")
+
+            # Ensure branch exists in base
+            b_proc = await asyncio.create_subprocess_exec(
+                "git",
+                "-C",
+                base_repo,
+                "branch",
+                "-f",
+                f"agent/{run_id}",
+                "HEAD",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            await b_proc.communicate()
+
     async def commit_and_push(
         self,
         repo_id: str,
@@ -283,6 +329,8 @@ class SandboxManager:
         worktree_path = self.get_worktree_path(repo_id, run_id)
         if not os.path.exists(worktree_path):
             raise FileNotFoundError(f"Worktree path does not exist for run {run_id}: {worktree_path}")
+
+        await self._ensure_worktree_valid(repo_id, run_id)
 
         target_branch = branch_name or f"agent/{run_id}"
 

@@ -242,10 +242,12 @@ export function createChangesetsRouter(): Router {
 
         if (!pushRes.ok) {
           const errText = await pushRes.text();
-          console.warn("Agent commit-and-push warning:", errText);
+          console.error("Agent commit-and-push failed:", errText);
+          throw new Error(`Failed to commit and push changes to GitHub: ${errText}`);
         }
-      } catch (pushErr) {
-        console.warn("Failed to invoke agent commit-and-push:", pushErr);
+      } catch (pushErr: any) {
+        console.error("Failed to invoke agent commit-and-push:", pushErr);
+        throw pushErr;
       }
 
       // 4. Create Pull Request on GitHub

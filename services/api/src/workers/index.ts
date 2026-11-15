@@ -36,7 +36,8 @@ async function startWorker(): Promise<void> {
       const repo = await Repo.findById(repoId).lean();
       if (repo?.githubInstallationId && isGitHubAppConfigured(config)) {
         try {
-          token = await getInstallationAccessToken(repo.githubInstallationId);
+          const tokenRes = await getInstallationAccessToken(repo.githubInstallationId);
+          token = tokenRes.token;
         } catch (appErr) {
           console.warn("Could not get GitHub App installation token:", appErr);
         }
