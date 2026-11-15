@@ -124,3 +124,4 @@ All model invocations pass through an abstract provider interface (`services/age
   - `LLM_FAST_MODEL` (e.g., `nemotron-3.5-lightning-30b`): Used for conversation summarization, PR title/body generation, and quick classification tasks.
   - `LLM_CHAT_MODEL` (e.g., `nemotron-3.5-super-vl-120b`): Used for multi-step reasoning, AST planning, and code synthesis.
 * **Standardized Tracing**: Every call across any provider automatically formats inputs, outputs, token counts, and latency for Langfuse trace spans.
+

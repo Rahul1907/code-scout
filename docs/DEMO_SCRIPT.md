@@ -85,3 +85,4 @@ A 2 to 3 minute walk-through script demonstrating CodeScout's end-to-end capabil
 > *"Every single agent step, tool call, latency, and token cost is fully traced in Langfuse for production observability.*
 > 
 > *CodeScout is production-hardened with rate limiters, DuckDNS auto-HTTPS via Caddy, and multi-arch ARM64 containers. Thank you for watching!"*
+

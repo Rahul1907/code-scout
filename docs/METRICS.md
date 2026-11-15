@@ -77,3 +77,4 @@ Total Failures (3 / 15 tasks)
 | **Worktree Creation Overhead** | &le; 2 seconds | Mean worktree branch creation: 140 ms |
 | **LLM Rate Limit Headroom** | 35 RPM token bucket | Zero HTTP 429 errors encountered |
 | **API Status Pings** | 15s health interval | Mean status response time: 24 ms |
+
