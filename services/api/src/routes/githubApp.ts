@@ -3,6 +3,8 @@ import mongoose from "mongoose";
 import { getConfig } from "../lib/config.js";
 import {
   getGitHubAppInstallUrl,
+  getInstallationAccessToken,
+  getRepoInstallation,
   isGitHubAppConfigured,
   verifyWebhookSignature,
 } from "../lib/githubApp.js";
@@ -37,14 +39,37 @@ export function createGitHubAppRouter(): Router {
 
     if (rawInstallationId) {
       const installationId = Number(rawInstallationId);
-      if (!Number.isNaN(installationId) && state && mongoose.isValidObjectId(state)) {
-        try {
-          await Repo.updateOne(
-            { _id: state },
-            { $set: { githubInstallationId: installationId } },
-          );
-        } catch (err) {
-          console.error("Failed to associate GitHub installation with repo:", err);
+      if (!Number.isNaN(installationId)) {
+        if (state && mongoose.isValidObjectId(state)) {
+          try {
+            await Repo.updateOne(
+              { _id: state },
+              { $set: { githubInstallationId: installationId } },
+            );
+          } catch (err) {
+            console.error("Failed to associate GitHub installation with repo:", err);
+          }
+        } else {
+          try {
+            const tokenRes = await getInstallationAccessToken(installationId, config);
+            const reposRes = await fetch("https://api.github.com/installation/repositories", {
+              headers: {
+                Authorization: `Bearer ${tokenRes.token}`,
+                Accept: "application/vnd.github+json",
+                "User-Agent": "CodeScout-Agent",
+              },
+            });
+            if (reposRes.ok) {
+              const reposData = (await reposRes.json()) as { repositories: Array<{ full_name: string }> };
+              const fullNames = reposData.repositories.map((r) => r.full_name);
+              await Repo.updateMany(
+                { fullName: { $in: fullNames } },
+                { $set: { githubInstallationId: installationId } },
+              );
+            }
+          } catch (e) {
+            console.error("Failed to auto-link installation repositories:", e);
+          }
         }
       }
     }
@@ -70,12 +95,21 @@ export function createGitHubAppRouter(): Router {
         return;
       }
 
-      const installed = typeof repo.githubInstallationId === "number" && repo.githubInstallationId > 0;
+      let installationId = repo.githubInstallationId;
+      if (!installationId || installationId <= 0) {
+        const detectedId = await getRepoInstallation(repo.fullName, config);
+        if (detectedId) {
+          installationId = detectedId;
+          await Repo.updateOne({ _id: repoId }, { $set: { githubInstallationId: detectedId } });
+        }
+      }
+
+      const installed = typeof installationId === "number" && installationId > 0;
       const installUrl = getGitHubAppInstallUrl(repoId);
 
       res.status(200).json({
         installed,
-        installationId: repo.githubInstallationId ?? null,
+        installationId: installationId ?? null,
         installUrl,
       });
     } catch (err) {

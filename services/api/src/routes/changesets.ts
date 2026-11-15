@@ -3,6 +3,7 @@ import { getConfig } from "../lib/config.js";
 import {
   getGitHubAppInstallUrl,
   getInstallationAccessToken,
+  getRepoInstallation,
   isGitHubAppConfigured,
 } from "../lib/githubApp.js";
 import { type AuthenticatedRequest, requireAuth } from "../middleware/auth.js";
@@ -168,8 +169,17 @@ export function createChangesetsRouter(): Router {
         return;
       }
 
-      // Check if GitHub App is installed
-      if (!repo.githubInstallationId || repo.githubInstallationId <= 0) {
+      // Check if GitHub App is installed, or auto-detect from GitHub API
+      let installationId = repo.githubInstallationId;
+      if (!installationId || installationId <= 0) {
+        const detectedId = await getRepoInstallation(repo.fullName, config);
+        if (detectedId) {
+          installationId = detectedId;
+          await Repo.updateOne({ _id: repo._id }, { $set: { githubInstallationId: detectedId } });
+        }
+      }
+
+      if (!installationId || installationId <= 0) {
         const installUrl = getGitHubAppInstallUrl(repo._id.toString());
         res.status(400).json({
           error: "GitHub App is not installed on this repository. Please install it first to enable PR creation.",
@@ -207,7 +217,7 @@ export function createChangesetsRouter(): Router {
       let token = "mock-dev-token";
       const isConfigured = isGitHubAppConfigured(config);
       if (isConfigured) {
-        const tokenRes = await getInstallationAccessToken(repo.githubInstallationId, config);
+        const tokenRes = await getInstallationAccessToken(installationId, config);
         token = tokenRes.token;
       }
 

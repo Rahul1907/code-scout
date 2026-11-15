@@ -83,6 +83,33 @@ export function getGitHubAppInstallUrl(state?: string, config?: AppConfig): stri
   return `${base}?state=${encodeURIComponent(state)}`;
 }
 
+export async function getRepoInstallation(
+  fullName: string,
+  config?: AppConfig,
+): Promise<number | null> {
+  const cfg = config ?? getConfig();
+  if (!isGitHubAppConfigured(cfg)) return null;
+
+  try {
+    const appJwt = getGitHubAppJwt(cfg);
+    const res = await fetch(`https://api.github.com/repos/${fullName}/installation`, {
+      headers: {
+        Authorization: `Bearer ${appJwt}`,
+        Accept: "application/vnd.github+json",
+        "User-Agent": "CodeScout-Agent",
+      },
+    });
+
+    if (res.status === 200) {
+      const data = (await res.json()) as { id: number };
+      return data.id;
+    }
+  } catch (err) {
+    console.error(`Failed to query installation for ${fullName}:`, err);
+  }
+  return null;
+}
+
 export function verifyWebhookSignature(
   rawPayload: string | Buffer,
   signatureHeader: string | undefined,

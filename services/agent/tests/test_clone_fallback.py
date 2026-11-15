@@ -31,3 +31,4 @@ def test_clone_repository_fallback_on_auth_failure(tmp_path: Path):
         # Check that the fallback call omitted the extraHeader Authorization
         fallback_call_args = mock_run.call_args_list[1][0][0]
         assert "http.extraHeader=Authorization" not in " ".join(fallback_call_args)
+
