@@ -32,6 +32,17 @@ def clone_repository(
 
     proc = subprocess.run(cmd, capture_output=True, text=True, timeout=180)
     if proc.returncode != 0:
+        # If cloning failed with a token (e.g. expired OAuth token on a public repo),
+        # try cloning without the token as a fallback.
+        if token:
+            if base_dir.exists():
+                shutil.rmtree(base_dir)
+            fallback_cmd = ["git", "clone", "--depth", "1", clone_url, str(base_dir)]
+            fallback_proc = subprocess.run(fallback_cmd, capture_output=True, text=True, timeout=180)
+            if fallback_proc.returncode == 0:
+                proc = fallback_proc
+
+    if proc.returncode != 0:
         err = _sanitize_error(proc.stderr.strip() or proc.stdout.strip(), token)
         raise RuntimeError(f"git clone failed: {err}")
 

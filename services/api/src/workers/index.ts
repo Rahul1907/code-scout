@@ -2,6 +2,10 @@ import { Worker } from "bullmq";
 import { getConfig } from "../lib/config.js";
 import { decryptToken } from "../lib/crypto.js";
 import { connectDb, disconnectDb } from "../lib/db.js";
+import {
+  getInstallationAccessToken,
+  isGitHubAppConfigured,
+} from "../lib/githubApp.js";
 import { Repo } from "../models/repo.js";
 import { User } from "../models/user.js";
 import {
@@ -29,9 +33,19 @@ async function startWorker(): Promise<void> {
       );
 
       let token: string | undefined;
-      const user = await User.findById(userId).lean();
-      if (user?.accessTokenEncrypted) {
-        token = decryptToken(user.accessTokenEncrypted, config.TOKEN_ENCRYPTION_KEY);
+      const repo = await Repo.findById(repoId).lean();
+      if (repo?.githubInstallationId && isGitHubAppConfigured(config)) {
+        try {
+          token = await getInstallationAccessToken(repo.githubInstallationId);
+        } catch (appErr) {
+          console.warn("Could not get GitHub App installation token:", appErr);
+        }
+      }
+      if (!token) {
+        const user = await User.findById(userId).lean();
+        if (user?.accessTokenEncrypted) {
+          token = decryptToken(user.accessTokenEncrypted, config.TOKEN_ENCRYPTION_KEY);
+        }
       }
 
       const res = await fetch(`${config.AGENT_URL}/internal/index`, {
