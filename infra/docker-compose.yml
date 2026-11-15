@@ -91,7 +91,6 @@ services:
     volumes:
       - ../services/api:/app
       - /app/node_modules
-      - ../secrets:/secrets:ro
       - repos_data:/data/repos
     depends_on:
       mongo:
@@ -118,7 +117,6 @@ services:
     volumes:
       - ../services/api:/app
       - /app/node_modules
-      - ../secrets:/secrets:ro
       - repos_data:/data/repos
     depends_on:
       mongo:

@@ -53,8 +53,7 @@ interface RunSummaryPayload {
 
 export function createConversationsRouter(): Router {
   const router = Router();
-  router.use("/repos", requireAuth);
-  router.use("/conversations", requireAuth);
+  router.use(requireAuth);
 
   router.post("/repos/:id/conversations", async (req: Request, res: Response) => {
     const auth = (req as AuthenticatedRequest).auth!;

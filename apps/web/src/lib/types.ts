@@ -117,21 +117,6 @@ export interface TestResult {
   passed: boolean;
 }
 
-export interface PullRequestItem {
-  _id: string;
-  repoId: string;
-  runId: string;
-  changesetId: string;
-  prNumber: number;
-  prUrl: string;
-  title: string;
-  body: string;
-  headBranch: string;
-  baseBranch: string;
-  status: "open" | "closed" | "merged";
-  createdAt: string;
-}
-
 export interface ChangesetItem {
   _id: string;
   runId: string;
@@ -140,11 +125,6 @@ export interface ChangesetItem {
   testCommand?: string;
   testResult?: TestResult;
   status: "pending_review" | "approved" | "rejected";
-  pullRequest?: {
-    prNumber: number;
-    prUrl: string;
-    title?: string;
-  };
   createdAt: string;
   updatedAt: string;
 }
@@ -198,41 +178,3 @@ export type SseEvent =
       };
     }
   | { type: "error"; data: { message: string; retryable?: boolean } };
-
-export interface TaskEvalResultItem {
-  taskId: string;
-  repo: string;
-  instruction: string;
-  targetFile?: string;
-  testCommand: string;
-  passed: boolean;
-  exitCode: number;
-  testOutputTail?: string;
-  stepCount: number;
-  totalTokens: number;
-  durationSec: number;
-  editedFiles?: string[];
-  failureCategory?: string | null;
-  agentStatus?: string;
-}
-
-export interface EvalRunItem {
-  _id: string;
-  suite: "retrieval" | "task";
-  createdAt: string;
-  configSnapshot: Record<string, any>;
-  repos?: string[];
-  totalQuestions?: number;
-  totalTasks?: number;
-  passedTasks?: number;
-  failedTasks?: number;
-  metrics: {
-    passRate?: number;
-    avgSteps?: number;
-    avgTokens?: number;
-    avgDurationSec?: number;
-    failureCategories?: Record<string, number>;
-    [key: string]: any;
-  };
-  results?: Array<TaskEvalResultItem & Record<string, any>>;
-}
