@@ -317,6 +317,23 @@ class SandboxManager:
             )
             await b_proc.communicate()
 
+        # Ensure git identity is configured on the worktree
+        for config_key, config_val in [
+            ("user.name", "CodeScout Agent"),
+            ("user.email", "agent@codescout.local"),
+        ]:
+            c_proc = await asyncio.create_subprocess_exec(
+                "git",
+                "-C",
+                worktree_path,
+                "config",
+                config_key,
+                config_val,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            await c_proc.communicate()
+
     async def commit_and_push(
         self,
         repo_id: str,
@@ -365,6 +382,7 @@ class SandboxManager:
                 "-C",
                 worktree_path,
                 "commit",
+                "--allow-empty",
                 "-m",
                 commit_message,
                 stdout=asyncio.subprocess.PIPE,
