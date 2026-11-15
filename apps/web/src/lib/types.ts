@@ -5,6 +5,7 @@ export interface UserProfile {
   name: string;
   avatarUrl: string;
   createdAt?: string;
+  canEdit?: boolean;
 }
 
 export type RepoStatus = "pending" | "cloning" | "indexing" | "ready" | "failed";

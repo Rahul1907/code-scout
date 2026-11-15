@@ -2,8 +2,9 @@ import crypto from "node:crypto";
 import { Router, type Request, type Response } from "express";
 import mongoose from "mongoose";
 import { z } from "zod";
-import { getConfig } from "../lib/config.js";
+import { getConfig, isEditAllowed } from "../lib/config.js";
 import { type AuthenticatedRequest, requireAuth } from "../middleware/auth.js";
+import { AgentRun } from "../models/agentRun.js";
 import { Conversation } from "../models/conversation.js";
 import { Message } from "../models/message.js";
 import { Repo } from "../models/repo.js";
@@ -136,6 +137,29 @@ export function createConversationsRouter(): Router {
     if (!parsed.success) {
       res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid message payload" });
       return;
+    }
+
+    if (parsed.data.mode === "edit" && !isEditAllowed(auth.login, config.EDIT_ALLOWLIST)) {
+      res.status(403).json({
+        error: "Edit mode is restricted to allowlisted users in public demo mode.",
+      });
+      return;
+    }
+
+    if (mongoose.connection.readyState === 1) {
+      const startOfDay = new Date();
+      startOfDay.setUTCHours(0, 0, 0, 0);
+      const runsToday = await AgentRun.countDocuments({
+        userId: auth.sub,
+        createdAt: { $gte: startOfDay },
+      });
+
+      if (runsToday >= config.DAILY_RUNS_PER_USER) {
+        res.status(429).json({
+          error: `Daily limit of ${config.DAILY_RUNS_PER_USER} agent runs reached. Please try again tomorrow.`,
+        });
+        return;
+      }
     }
 
     const conversation = await Conversation.findOne({ _id: convId, userId: auth.sub });

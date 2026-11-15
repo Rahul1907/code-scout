@@ -23,9 +23,25 @@ const envSchema = z.object({
     .default("mongodb://mongo:27017/codescout?directConnection=true"),
   REDIS_URL: z.string().min(1).default("redis://redis:6379"),
   MAX_REPO_SIZE_MB: z.coerce.number().int().positive().default(50),
+  DAILY_RUNS_PER_USER: z.coerce.number().int().positive().default(20),
+  EDIT_ALLOWLIST: z.string().default(""),
+  RATE_LIMIT_MAX_PER_IP: z.coerce.number().int().positive().default(120),
+  RATE_LIMIT_MAX_PER_USER: z.coerce.number().int().positive().default(60),
+  RATE_LIMIT_WINDOW_SECONDS: z.coerce.number().int().positive().default(60),
 });
 
 export type AppConfig = z.infer<typeof envSchema>;
+
+export function isEditAllowed(login: string, allowlistStr: string): boolean {
+  if (!allowlistStr || allowlistStr.trim().length === 0) {
+    return true;
+  }
+  const allowed = allowlistStr
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+  return allowed.includes(login.trim().toLowerCase());
+}
 
 let cachedConfig: AppConfig | null = null;
 

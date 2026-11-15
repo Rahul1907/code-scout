@@ -39,6 +39,11 @@ describe("GitHub App Library", () => {
     MONGODB_URI: "mongodb://localhost:27017/test",
     REDIS_URL: "redis://localhost:6379",
     MAX_REPO_SIZE_MB: 50,
+    DAILY_RUNS_PER_USER: 20,
+    EDIT_ALLOWLIST: "",
+    RATE_LIMIT_MAX_PER_IP: 120,
+    RATE_LIMIT_MAX_PER_USER: 60,
+    RATE_LIMIT_WINDOW_SECONDS: 60,
   };
 
   it("checks if GitHub App is configured", () => {

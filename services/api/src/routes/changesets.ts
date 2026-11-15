@@ -1,5 +1,5 @@
 import { Router, type Request, type Response } from "express";
-import { getConfig } from "../lib/config.js";
+import { getConfig, isEditAllowed } from "../lib/config.js";
 import {
   getGitHubAppInstallUrl,
   getInstallationAccessToken,
@@ -40,7 +40,9 @@ export function createChangesetsRouter(): Router {
 
   // POST /api/changesets/:id/approve
   router.post("/changesets/:id/approve", async (req: Request, res: Response) => {
+    const auth = (req as AuthenticatedRequest).auth;
     const id = String(req.params.id ?? "");
+    const config = getConfig();
 
     try {
       const changeset =
@@ -48,6 +50,14 @@ export function createChangesetsRouter(): Router {
         (await Changeset.findOne({ $or: [{ _id: id }, { runId: id }] }));
       if (!changeset) {
         res.status(404).json({ error: "Changeset not found" });
+        return;
+      }
+
+      // Check edit allowlist in public demo mode
+      if (auth && !isEditAllowed(auth.login, config.EDIT_ALLOWLIST)) {
+        res.status(403).json({
+          error: "Approving changes is restricted to allowlisted users in public demo mode.",
+        });
         return;
       }
 
@@ -70,6 +80,7 @@ export function createChangesetsRouter(): Router {
 
   // POST /api/changesets/:id/reject
   router.post("/changesets/:id/reject", async (req: Request, res: Response) => {
+    const auth = (req as AuthenticatedRequest).auth;
     const id = String(req.params.id ?? "");
     const config = getConfig();
 
@@ -79,6 +90,14 @@ export function createChangesetsRouter(): Router {
         (await Changeset.findOne({ $or: [{ _id: id }, { runId: id }] }));
       if (!changeset) {
         res.status(404).json({ error: "Changeset not found" });
+        return;
+      }
+
+      // Check edit allowlist in public demo mode
+      if (auth && !isEditAllowed(auth.login, config.EDIT_ALLOWLIST)) {
+        res.status(403).json({
+          error: "Rejecting changes is restricted to allowlisted users in public demo mode.",
+        });
         return;
       }
 
@@ -149,6 +168,14 @@ export function createChangesetsRouter(): Router {
 
       if (!changeset) {
         res.status(404).json({ error: "Changeset not found" });
+        return;
+      }
+
+      // Check edit allowlist in public demo mode
+      if (!isEditAllowed(auth.login, config.EDIT_ALLOWLIST)) {
+        res.status(403).json({
+          error: "Pull request creation is restricted to allowlisted users in public demo mode.",
+        });
         return;
       }
 

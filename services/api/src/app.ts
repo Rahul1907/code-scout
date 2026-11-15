@@ -3,6 +3,7 @@ import cors from "cors";
 import express, { type Express, type Request, type Response } from "express";
 import helmet from "helmet";
 import { getConfig } from "./lib/config.js";
+import { rateLimiter } from "./middleware/rateLimiter.js";
 import { createAuthRouter } from "./routes/auth.js";
 import { createConversationsRouter } from "./routes/conversations.js";
 import { createReposRouter } from "./routes/repos.js";
@@ -15,6 +16,7 @@ export function createApp(): Express {
   const app = express();
   const config = getConfig();
 
+  app.set("trust proxy", 1);
   app.use(helmet());
   app.use(
     cors({
@@ -32,6 +34,8 @@ export function createApp(): Express {
       timestamp: new Date().toISOString(),
     });
   });
+
+  app.use("/api", rateLimiter());
 
   app.use("/api", createAuthRouter());
   app.use("/api", createReposRouter());

@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import { Router, type Request, type Response } from "express";
-import { getConfig } from "../lib/config.js";
+import { getConfig, isEditAllowed } from "../lib/config.js";
 import { encryptToken } from "../lib/crypto.js";
 import {
   AUTH_COOKIE_NAME,
@@ -178,6 +178,7 @@ export function createAuthRouter(): Router {
       return;
     }
 
+    const config = getConfig();
     res.status(200).json({
       id: user._id.toString(),
       githubId: user.githubId,
@@ -185,6 +186,7 @@ export function createAuthRouter(): Router {
       name: user.name,
       avatarUrl: user.avatarUrl,
       createdAt: user.createdAt,
+      canEdit: isEditAllowed(user.login, config.EDIT_ALLOWLIST),
     });
   });
 
