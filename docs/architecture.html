@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CodeScout — Complete System Architecture & Infrastructure Guide</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 18mm 15mm 18mm 15mm;
+      @bottom-right {
+        content: counter(page);
+      }
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      color: #1f2937;
+      line-height: 1.55;
+      font-size: 13px;
+      margin: 0;
+      padding: 0;
+      background-color: #ffffff;
+    }
+    .header {
+      border-bottom: 2px solid #2563eb;
+      padding-bottom: 12px;
+      margin-bottom: 24px;
+    }
+    h1 {
+      font-size: 24px;
+      color: #1e3a8a;
+      margin: 0 0 6px 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .subtitle {
+      font-size: 13px;
+      color: #4b5563;
+      margin-bottom: 8px;
+    }
+    .badges {
+      margin-top: 8px;
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .badge-blue { background: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe; }
+    .badge-green { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+    .badge-purple { background: #f3e8ff; color: #6b21a8; border: 1px solid #e9d5ff; }
+    .badge-orange { background: #ffedd5; color: #9a3412; border: 1px solid #fed7aa; }
+
+    h2 {
+      font-size: 16px;
+      color: #1e40af;
+      border-bottom: 1px solid #e5e7eb;
+      padding-bottom: 4px;
+      margin-top: 24px;
+      margin-bottom: 12px;
+      page-break-after: avoid;
+    }
+    h3 {
+      font-size: 14px;
+      color: #111827;
+      margin-top: 16px;
+      margin-bottom: 8px;
+      page-break-after: avoid;
+    }
+    p, ul, ol {
+      margin-top: 0;
+      margin-bottom: 10px;
+    }
+    li {
+      margin-bottom: 4px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      font-size: 12px;
+      page-break-inside: avoid;
+    }
+    th, td {
+      border: 1px solid #d1d5db;
+      padding: 6px 10px;
+      text-align: left;
+    }
+    th {
+      background-color: #f3f4f6;
+      color: #111827;
+      font-weight: 600;
+    }
+    tr:nth-child(even) {
+      background-color: #f9fafb;
+    }
+    .card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-left: 4px solid #3b82f6;
+      padding: 10px 14px;
+      border-radius: 4px;
+      margin: 12px 0;
+      page-break-inside: avoid;
+    }
+    .diagram-box {
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 12px;
+      margin: 14px 0;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 11px;
+      line-height: 1.4;
+      white-space: pre;
+      overflow-x: auto;
+      page-break-inside: avoid;
+    }
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 11.5px;
+      background: #f1f5f9;
+      color: #0f172a;
+      padding: 1px 4px;
+      border-radius: 3px;
+      border: 1px solid #e2e8f0;
+    }
+    .flow-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin: 12px 0;
+      page-break-inside: avoid;
+    }
+    .flow-item {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 10px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    }
+    .flow-item h4 {
+      margin: 0 0 4px 0;
+      font-size: 12px;
+      color: #1e40af;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>🔭 CodeScout — Complete Architecture & Infrastructure Guide</h1>
+    <div class="subtitle">Autonomous AI Coding Agent for GitHub Repositories • Full Infrastructure Specification</div>
+    <div class="badges">
+      <span class="badge badge-blue">Next.js 15 App Router</span>
+      <span class="badge badge-green">Python FastAPI 0.115</span>
+      <span class="badge badge-purple">Node.js 22 Express</span>
+      <span class="badge badge-orange">Docker Multi-Arch</span>
+      <span class="badge badge-blue">Tree-sitter AST</span>
+      <span class="badge badge-green">MongoDB Vector Search</span>
+      <span class="badge badge-purple">GitHub App RS256</span>
+    </div>
+  </div>
+
+  <h2>1. Executive Summary & Overview</h2>
+  <p>
+    <strong>CodeScout</strong> is a production-grade autonomous AI coding agent designed to interact with real-world GitHub codebases. Rather than acting as a standard LLM chat completion wrapper, CodeScout combines:
+  </p>
+  <ul>
+    <li><strong>Tree-sitter AST Syntax Parsing:</strong> Deep semantic understanding that respects language boundaries, function declarations, class scopes, and docstrings.</li>
+    <li><strong>Hybrid Search (Vector + Ripgrep RRF) & Reranking:</strong> Combines 2048-dim vector embeddings with exact identifier keyword search, fused via Reciprocal Rank Fusion ($k=60$) and scored by a cross-encoder reranker (achieving 1.00 MRR).</li>
+    <li><strong>Hand-Written Deterministic Agent Loop:</strong> Direct control over retries, error recovery, step limits, and real-time Server-Sent Events (SSE) streaming without framework bloat.</li>
+    <li><strong>Defense-in-Depth Container Sandboxing:</strong> Ephemeral test execution containers with dropped Linux capabilities, read-only root filesystems, zero network access, and isolated Git worktree branching.</li>
+    <li><strong>Automated Pull Request Lifecycle:</strong> GitHub App RS256 JWT signing, short-lived tokens, worktree branch push, and LLM-generated PR descriptions.</li>
+  </ul>
+
+  <h2>2. Production Topology & Architecture Diagram</h2>
+  <p>
+    CodeScout runs <strong>7 isolated services</strong> managed by Docker Compose. Only the Caddy reverse proxy publishes ports to the public host; all inter-service communication flows through an internal Docker bridge network:
+  </p>
+
+  <div class="diagram-box">
++----------------------------------------------------------------------------------------------------+
+|                                    PUBLIC INTERNET / DEVELOPER                                     |
++----------------------------------------------------------------------------------------------------+
+                                                  |
+                                          HTTPS (80 / 443)
+                                                  v
++----------------------------------------------------------------------------------------------------+
+| 1. CADDY REVERSE PROXY (caddy:2-alpine)                                                            |
+|    - Automatic HTTPS (Let's Encrypt / ZeroSSL)                                                     |
+|    - Routes / -> Next.js (web:3000)                                                                |
+|    - Routes /api/* -> Express (api:4000) with unbuffered SSE streaming (flush_interval -1)         |
++----------------------------------------------------------------------------------------------------+
+              |                                                      |
+      Internal Proxy (3000)                                  Internal Proxy (4000)
+              v                                                      v
++-----------------------------+        +-------------------------------------------------------------+
+| 2. WEB FRONTEND (Next.js 15)|        | 3. API BACKEND (Node 22 + Express)                          |
+| - App Router + React 19     |<------>| - GitHub OAuth login & session management                   |
+| - Monaco DiffEditor         |        | - Rate limiting (120 IP / 60 User / min)                    |
+| - Real-time SSE timeline    |        | - GitHub App RS256 JWT signing & installation tokens        |
+| - Evals Dashboard (/evals)  |        | - EDIT_ALLOWLIST demo guard & DAILY_RUNS_PER_USER           |
++-----------------------------+        +-------------------------------------------------------------+
+                                                  |                     |
+                              Enqueue Indexing    |                     | Internal SSE Proxy
+                                                  v                     v
+                        +----------------------------+       +---------------------------------------+
+                        | 4. BULLMQ WORKER (Node 22) |       | 5. AGENT SERVICE (Python 3.12 FastAPI)|
+                        | - Ingestion queue consumer |       | - Hand-written deterministic loop     |
+                        | - Clones base repositories |<----->| - Tree-sitter AST chunker             |
+                        | - Scheduled hourly cleanup |       | - Hybrid Retriever (Vector + Ripgrep) |
+                        |   (Deletes worktrees >24h) |       | - Cross-encoder Reranker              |
+                        +----------------------------+       | - Sandbox lifecycle orchestrator      |
+                                      |                      +---------------------------------------+
+                                      |                                         |
+                                      | Shared Volume (/data/repos)             | Container Exec via API
+                                      +--------------------+                    v
+                                                           |       +---------------------------------+
+                                                           |       | 7. DOCKER SOCKET PROXY          |
+                                                           |       | - Restricted Docker API         |
+                                                           |       | - Blocks privileged containers  |
+                                                           |       +---------------------------------+
+                                                           |                    | Launches
+                                                           v                    v
++----------------------------------------------------------+       +---------------------------------+
+| DATA & COORDINATION                                      |       | EPHEMERAL SANDBOX CONTAINER     |
+| - 6. Redis 7: Job queue, rate limit counters, cancel flag|       | - Git Worktree at /workspace    |
+| - MongoDB Atlas: App data, chunks, Vector Search index   |       | - No network (--network none)   |
+| - External: NVIDIA NIM (LLM / Embeddings / Reranker)     |       | - Dropped caps, read-only root  |
+| - External: Langfuse Cloud (Distributed Tracing)         |       | - Tests run safely; diff emitted|
++----------------------------------------------------------+       +---------------------------------+
+  </div>
+
+  <h2>3. Container Service Catalog</h2>
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 15%;">Service</th>
+        <th style="width: 22%;">Technology</th>
+        <th style="width: 13%;">Port</th>
+        <th style="width: 50%;">Role and Operational Scope</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>caddy</strong></td>
+        <td>Caddy 2 Alpine</td>
+        <td>80, 443 (Public)</td>
+        <td>SSL termination, automated HTTPS certificates, reverse proxy to web and api, unbuffered SSE proxying.</td>
+      </tr>
+      <tr>
+        <td><strong>web</strong></td>
+        <td>Next.js 15, Tailwind</td>
+        <td>3000 (Internal)</td>
+        <td>Next.js standalone runner. Provides repo explorer, chat interface, Monaco DiffEditor, and evals dashboard.</td>
+      </tr>
+      <tr>
+        <td><strong>api</strong></td>
+        <td>Node.js 22, Express</td>
+        <td>4000 (Internal)</td>
+        <td>Authentication, rate limiting, MongoDB models, GitHub App JWT signing, PR routes, and SSE proxying.</td>
+      </tr>
+      <tr>
+        <td><strong>worker</strong></td>
+        <td>Node.js 22, BullMQ</td>
+        <td>Internal Only</td>
+        <td>Background job processor. Coordinates repo cloning, calls agent indexing, and runs hourly disk maintenance.</td>
+      </tr>
+      <tr>
+        <td><strong>agent</strong></td>
+        <td>Python 3.12, FastAPI</td>
+        <td>8000 (Internal)</td>
+        <td>The AI agent runtime: Tree-sitter AST chunking, hybrid search, reranking, agent loop, and sandbox control.</td>
+      </tr>
+      <tr>
+        <td><strong>redis</strong></td>
+        <td>Redis 7 Alpine</td>
+        <td>6379 (Internal)</td>
+        <td>In-memory data store: BullMQ queues, sliding-window rate limit counters, and real-time run cancellation.</td>
+      </tr>
+      <tr>
+        <td><strong>docker-socket-proxy</strong></td>
+        <td>HAProxy Security Filter</td>
+        <td>2375 (Internal)</td>
+        <td>Restricts Docker daemon socket access, allowing container creation while blocking privileged escalations.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>4. Core Engineering Workflows</h2>
+
+  <h3>4.1 Repository Ingestion & Tree-Sitter AST Chunking</h3>
+  <p>
+    When a repository is connected, it is cloned into <code>/data/repos/{repoId}/base</code>. The agent processes files through <strong>Tree-sitter</strong> language grammars rather than arbitrary token counts:
+  </p>
+  <ul>
+    <li>Identifies function, method, and class definitions as unified AST nodes.</li>
+    <li>Preserves parent context hierarchy (e.g. <code>class AuthService > def verify_token</code>).</li>
+    <li>Generates 2048-dimensional embeddings in batches of 16 using NVIDIA's <code>nemotron-3.5-embed-1b</code> model.</li>
+    <li>Stores chunks in MongoDB Atlas with a dedicated Vector Search index alongside exact file/line bounds.</li>
+  </ul>
+
+  <h3>4.2 "Ask" Mode: Grounded Q&A with Line-Level Citations</h3>
+  <p>
+    When a developer asks a question about the repository:
+  </p>
+  <div class="card">
+    <strong>Hybrid Fusion & Rerank Formula:</strong><br/>
+    Candidates are retrieved using both Vector Search (semantic similarity) and Ripgrep (exact keyword matches), combined via <em>Reciprocal Rank Fusion (RRF, $k=60$)</em>:
+    <br/>
+    <code>RRF_Score(d) = (1 / (60 + rank_vector(d))) + (1 / (60 + rank_keyword(d)))</code>
+    <br/>
+    The top 30 candidates are passed to a cross-encoder model (<code>nemotron-3.5-rerank-8b</code>) to guarantee that the primary ground-truth file occupies Rank 1.
+  </div>
+  <p>
+    The agent answers with clickable citations (e.g., <code>[src/auth.ts:25-60]</code>). Clicking a citation immediately highlights the lines in the Monaco code viewer.
+  </p>
+
+  <h3>4.3 "Edit" Mode: Sandboxed Code Modification & Verification</h3>
+  <div class="flow-grid">
+    <div class="flow-item">
+      <h4>1. Worktree Branching</h4>
+      Edits never touch the base repository. A new Git worktree is created at <code>/data/repos/{repoId}/runs/{runId}</code> on a branch named <code>agent/{runId}</code>.
+    </div>
+    <div class="flow-item">
+      <h4>2. Ephemeral Sandbox</h4>
+      An isolated container mounts the worktree. Capabilities are dropped (<code>--cap-drop ALL</code>), root is read-only, and network is disabled.
+    </div>
+    <div class="flow-item">
+      <h4>3. Safe Tool Execution</h4>
+      The agent executes <code>edit_file</code> (exact string replacement) and <code>run_command</code> (test runner) inside the sandbox, iterating up to 3 times on test failures.
+    </div>
+    <div class="flow-item">
+      <h4>4. Monaco Diff Review</h4>
+      Once tests pass, a Git diff is packaged. The frontend renders a Monaco DiffEditor displaying modifications and test output for human review.
+    </div>
+  </div>
+
+  <h3>4.4 Automated Pull Request Creation</h3>
+  <p>
+    When the user approves a changeset and clicks "Create Pull Request":
+  </p>
+  <ol>
+    <li>The Node API signs a <strong>JWT with RS256</strong> using your GitHub App's private key (<code>github-app.pem</code>).</li>
+    <li>An installation access token is requested from GitHub on-the-fly (valid for 1 hour, never persisted).</li>
+    <li>The agent sets a standardized git committer identity (<code>CodeScout Agent &lt;agent@codescout.dev&gt;</code>) and pushes branch <code>agent/{runId}</code> to GitHub.</li>
+    <li>An LLM creates a structured markdown pull request description detailing the changes, test command, and exit status.</li>
+    <li>The PR is opened against the default branch, and a live link is returned to the user.</li>
+  </ol>
+
+  <h2>5. Security, Hardening & Maintenance</h2>
+  <ul>
+    <li><strong>Rate Limiting:</strong> Dual-layer rate limiting protects against abuse (120 requests/min per IP, 60 requests/min per user). Exceeding limits triggers an HTTP 429 response with <code>Retry-After</code> headers.</li>
+    <li><strong>Public Demo Guard:</strong> <code>EDIT_ALLOWLIST=Rahul1907</code> restricts Edit mode, diff approval, and PR creation strictly to authorized GitHub accounts. All other visitors are restricted to Ask mode.</li>
+    <li><strong>Automated Disk Maintenance:</strong> The BullMQ worker runs hourly cleanup sweeps to purge worktree folders older than 24 hours and base clones unused for >14 days, preventing disk exhaustion and keeping the Oracle VM active.</li>
+    <li><strong>System Health Monitoring:</strong> <code>/api/status</code> exposes real-time health, ping latencies, and availability for MongoDB, Redis, the Agent service, and NVIDIA LLM endpoints.</li>
+  </ul>
+
+  <div class="card" style="margin-top: 20px;">
+    <strong>Deployment Status:</strong> Live on Oracle Cloud Infrastructure (Ubuntu 22.04 LTS x86_64 / ARM64), DuckDNS dynamic DNS updater, and automatic Let's Encrypt HTTPS via Caddy.
+  </div>
+
+</body>
+</html>
